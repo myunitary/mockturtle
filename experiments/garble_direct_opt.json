@@ -1,0 +1,124 @@
+[
+  {
+    "entries": [
+      {
+        "benchmark": "comparator_32bit_signed_lt_untilsat",
+        "cost_xag_opt": 184,
+        "cost_xmg": 324,
+        "cost_xmg_opt": 324,
+        "improvement %": -76.08695983886719,
+        "num_and_xag_opt": 92,
+        "num_maj_xmg": 108,
+        "num_maj_xmg_opt": 108,
+        "num_xor_xag_opt": 95,
+        "num_xor_xmg": 116,
+        "num_xor_xmg_opt": 77
+      },
+      {
+        "benchmark": "comparator_32bit_signed_lteq_untilsat",
+        "cost_xag_opt": 184,
+        "cost_xmg": 342,
+        "cost_xmg_opt": 339,
+        "improvement %": -84.23912811279297,
+        "num_and_xag_opt": 92,
+        "num_maj_xmg": 114,
+        "num_maj_xmg_opt": 113,
+        "num_xor_xag_opt": 97,
+        "num_xor_xmg": 89,
+        "num_xor_xmg_opt": 61
+      },
+      {
+        "benchmark": "comparator_32bit_unsigned_lt_untilsat",
+        "cost_xag_opt": 184,
+        "cost_xmg": 324,
+        "cost_xmg_opt": 324,
+        "improvement %": -76.08695983886719,
+        "num_and_xag_opt": 92,
+        "num_maj_xmg": 108,
+        "num_maj_xmg_opt": 108,
+        "num_xor_xag_opt": 95,
+        "num_xor_xmg": 116,
+        "num_xor_xmg_opt": 77
+      },
+      {
+        "benchmark": "comparator_32bit_unsigned_lteq_untilsat",
+        "cost_xag_opt": 184,
+        "cost_xmg": 342,
+        "cost_xmg_opt": 339,
+        "improvement %": -84.23912811279297,
+        "num_and_xag_opt": 92,
+        "num_maj_xmg": 114,
+        "num_maj_xmg_opt": 113,
+        "num_xor_xag_opt": 97,
+        "num_xor_xmg": 89,
+        "num_xor_xmg_opt": 61
+      },
+      {
+        "benchmark": "DES-expanded_untilsat",
+        "cost_xag_opt": 18414,
+        "cost_xmg": 45378,
+        "cost_xmg_opt": 25365,
+        "improvement %": -37.748451232910156,
+        "num_and_xag_opt": 9207,
+        "num_maj_xmg": 15126,
+        "num_maj_xmg_opt": 8455,
+        "num_xor_xag_opt": 13129,
+        "num_xor_xmg": 11263,
+        "num_xor_xmg_opt": 10938
+      },
+      {
+        "benchmark": "DES-non-expanded_untilsat",
+        "cost_xag_opt": 18088,
+        "cost_xmg": 45279,
+        "cost_xmg_opt": 24987,
+        "improvement %": -38.14131164550781,
+        "num_and_xag_opt": 9044,
+        "num_maj_xmg": 15093,
+        "num_maj_xmg_opt": 8329,
+        "num_xor_xag_opt": 13100,
+        "num_xor_xmg": 11105,
+        "num_xor_xmg_opt": 10937
+      },
+      {
+        "benchmark": "md5_untilsat",
+        "cost_xag_opt": 18734,
+        "cost_xmg": 28143,
+        "cost_xmg_opt": 28137,
+        "improvement %": -50.19216537475586,
+        "num_and_xag_opt": 9367,
+        "num_maj_xmg": 9381,
+        "num_maj_xmg_opt": 9379,
+        "num_xor_xag_opt": 29729,
+        "num_xor_xmg": 30325,
+        "num_xor_xmg_opt": 14564
+      },
+      {
+        "benchmark": "mult_32x32_untilsat",
+        "cost_xag_opt": 3378,
+        "cost_xmg": 12321,
+        "cost_xmg_opt": 7908,
+        "improvement %": -134.10302734375,
+        "num_and_xag_opt": 1689,
+        "num_maj_xmg": 4107,
+        "num_maj_xmg_opt": 2636,
+        "num_xor_xag_opt": 3861,
+        "num_xor_xmg": 2473,
+        "num_xor_xmg_opt": 2470
+      },
+      {
+        "benchmark": "sha-1_untilsat",
+        "cost_xag_opt": 23030,
+        "cost_xmg": 35460,
+        "cost_xmg_opt": 34908,
+        "improvement %": -51.576202392578125,
+        "num_and_xag_opt": 11515,
+        "num_maj_xmg": 11820,
+        "num_maj_xmg_opt": 11636,
+        "num_xor_xag_opt": 44358,
+        "num_xor_xmg": 44311,
+        "num_xor_xmg_opt": 20556
+      }
+    ],
+    "version": "b4566c6"
+  }
+]

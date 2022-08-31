@@ -1,0 +1,47 @@
+[
+  {
+    "entries": [
+      {
+        "benchmark": "comparator_32bit_signed_lt_untilsat",
+        "cost_xag": 184,
+        "cost_xmg_comb": 500,
+        "cost_xmg_han": 213,
+        "cost_xmg_shu": 274,
+        "improvement_comb %": -171.73912048339844,
+        "improvement_han %": -15.760869979858398,
+        "improvement_shu %": -48.91304397583008
+      },
+      {
+        "benchmark": "comparator_32bit_signed_lteq_untilsat",
+        "cost_xag": 184,
+        "cost_xmg_comb": 501,
+        "cost_xmg_han": 216,
+        "cost_xmg_shu": 283,
+        "improvement_comb %": -172.28260803222656,
+        "improvement_han %": -17.39130401611328,
+        "improvement_shu %": -53.804351806640625
+      },
+      {
+        "benchmark": "comparator_32bit_unsigned_lt_untilsat",
+        "cost_xag": 184,
+        "cost_xmg_comb": 500,
+        "cost_xmg_han": 213,
+        "cost_xmg_shu": 274,
+        "improvement_comb %": -171.73912048339844,
+        "improvement_han %": -15.760869979858398,
+        "improvement_shu %": -48.91304397583008
+      },
+      {
+        "benchmark": "comparator_32bit_unsigned_lteq_untilsat",
+        "cost_xag": 184,
+        "cost_xmg_comb": 501,
+        "cost_xmg_han": 216,
+        "cost_xmg_shu": 283,
+        "improvement_comb %": -172.28260803222656,
+        "improvement_han %": -17.39130401611328,
+        "improvement_shu %": -53.804351806640625
+      }
+    ],
+    "version": "b4566c6"
+  }
+]

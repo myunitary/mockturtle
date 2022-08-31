@@ -789,6 +789,11 @@ public:
     return n > 0 && !is_ci( n ) && _storage->nodes[n].children[0].index < _storage->nodes[n].children[1].index;
   }
 
+  bool is_fakemaj( node const& n ) const
+  {
+    return is_maj( n ) && !( static_cast<bool>( _storage->nodes[n].children[0].index ) );
+  }
+
   bool is_ite( node const& n ) const
   {
     (void)n;

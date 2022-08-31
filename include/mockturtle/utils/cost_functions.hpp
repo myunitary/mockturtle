@@ -107,6 +107,7 @@ struct mc_cost
     // TODO (Does not take into account general node functions)
     return 1u;
   }
+  
 };
 
 template<class Ntk, class NodeCostFn = unit_cost<Ntk>>

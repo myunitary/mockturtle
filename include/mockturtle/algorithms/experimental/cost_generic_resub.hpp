@@ -399,7 +399,7 @@ using cost_generic_resub_stats = boolean_optimization_stats<costfn_windowing_sta
  * \param pst Optimization statistics
  */
 template<class Ntk, class CostFn>
-void cost_generic_resub( Ntk& ntk, CostFn cost_fn, cost_generic_resub_params const& ps, cost_generic_resub_stats* pst = nullptr )
+void cost_generic_resub( Ntk& ntk, CostFn cost_fn, cost_generic_resub_params const& ps = {}, cost_generic_resub_stats* pst = nullptr )
 {
   fanout_view fntk( ntk );
   cost_view viewed( fntk, cost_fn );

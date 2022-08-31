@@ -84,7 +84,7 @@ public:
   union
   {
     uint64_t index;
-    uint64_t data;
+    uint64_t data; 
   };
 
   bool operator==( node_pointer<0> const& other ) const
