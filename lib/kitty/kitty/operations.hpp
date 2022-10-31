@@ -124,6 +124,14 @@ inline TT ternary_ite( const TT& first, const TT& second, const TT& third )
                             { return ( a & b ) ^ ( ~a & c ); } );
 }
 
+/*! \brief Ternary onehot of three truth tables */
+template<typename TT>
+inline TT ternary_onehot( const TT& first, const TT& second, const TT& third )
+{
+  return ternary_operation( first, second, third, []( auto a, auto b, auto c )
+                            { return a ^ b ^ c ^ ( a & b & c ); } );
+}
+
 /*! \brief Muxes two truth tables based on a variable
 
   \param var_index Variable index

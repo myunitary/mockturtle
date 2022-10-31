@@ -1,6 +1,7 @@
 #pragma once
 
 #include "encoders/ssv_encoder.hpp"
+#include "encoders/ssv_encoder_minmc.hpp"
 #include "encoders/ssv_fence_encoder.hpp"
 #include "encoders/ssv_fence2_encoder.hpp"
 #include "encoders/ssv_dag_encoder.hpp"

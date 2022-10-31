@@ -434,6 +434,9 @@ public:
         return true;
 
       /* foreach cut */
+      uint32_t cnt = 0u;
+
+
       for ( auto& cut : cuts.cuts( ntk.node_to_index( n ) ) )
       {
         /* skip trivial cuts */

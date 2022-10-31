@@ -18,6 +18,7 @@ namespace percy
     enum SynthMethod
     {
         SYNTH_STD,
+        SYNTH_STD_MINMC,
         SYNTH_STD_CEGAR,
         SYNTH_FENCE,
         SYNTH_FENCE_CEGAR,
@@ -29,6 +30,7 @@ namespace percy
     const char * const SynthMethodToString[SYNTH_TOTAL] =
     {
         "SYNTH_STD",
+        "SYNTH_STD_MINMC",
         "SYNTH_STD_CEGAR",
         "SYNTH_FENCE",
         "SYNTH_FENCE_CEGAR",
@@ -39,6 +41,7 @@ namespace percy
     enum EncoderType
     {
         ENC_SSV,
+        ENC_SSV_MINMC,
         ENC_MSV,
         ENC_DITT,
         ENC_FENCE,
@@ -49,6 +52,7 @@ namespace percy
     const char* const EncoderTypeToString[ENC_TOTAL] = 
     {
         "ENC_SSV",
+        "ENC_SSV_MINMC",
         "ENC_MSV",
         "ENC_DITT",
         "ENC_FENCE",
@@ -398,5 +402,148 @@ namespace percy
             }
     };
 
-}
+class spec_minmc
+{
+
+public:
+    bool is_dont_care( uint32_t bit_idx ) const
+    {
+        if ( !has_dc_mask )
+        {
+            return false;
+        }
+
+        return kitty::get_bit( dc_mask, bit_idx );
+    }
+
+    void set_nfree( uint32_t bound_nfree )
+    {
+        if ( bound_nfree != 0u )
+        {
+            nfree = bound_nfree;
+            nr_steps = nfree;
+        }
+
+        return;
+    }
+
+    void set_output( kitty::dynamic_truth_table const& tt )
+    {
+        function = tt;
+
+        return;
+    }
+
+    void set_dont_care( kitty::dynamic_truth_table const& tt_dc )
+    {
+        dc_mask = tt_dc;
+        has_dc_mask = true;
+        std::cout << "Set dont care: ";
+        for ( auto i = tt_size; i != 0; --i )
+        {
+            std::cout << kitty::get_bit( dc_mask, i );
+        }
+        std::cout << kitty::get_bit( dc_mask, 0 ) << "\n";
+
+        return;
+    }
+
+    void add_primitive( kitty::dynamic_truth_table const& tt )
+    {
+        compiled_primitives.emplace_back( tt );
+
+        return;
+    }
+
+    void add_free_primitive( kitty::dynamic_truth_table const& tt )
+    {
+        compiled_primitives.emplace_back( tt );
+        compiled_free_primitives.emplace_back( tt );
+
+        return;
+    }
+
+    std::vector<kitty::dynamic_truth_table> const& get_compiled_primitives() const
+    {
+        return compiled_primitives;
+    }
+
+    std::vector<kitty::dynamic_truth_table> const& get_compiled_free_primitives() const
+    {
+        return compiled_free_primitives;
+    }
+
+    kitty::dynamic_truth_table const& get_function() const
+    {
+        return function;
+    }
+
+    kitty::dynamic_truth_table const& get_dc_mask() const
+    {
+        return dc_mask;
+    }
+
+    int check_triv()
+    {
+        if ( kitty::is_const0( function ) )
+        {
+            return 0;
+        }
+        else
+        {
+            for ( auto i = 0; i < nr_in; ++i )
+            {
+                auto tt_var = function.construct();
+                kitty::create_nth_var( tt_var, i );
+                if ( function == tt_var )
+                {
+                    return i + 1;
+                }
+            }
+        }
+
+        return -1;
+    }
+
+    void preprocess()
+    {
+        /* assign data numbers */
+        nr_in = function.num_vars();
+        tt_size = ( 1 << nr_in ) - 1;
+
+        if ( verbosity )
+        {
+            std::cout << "========================================";
+            std::cout << "========================================" << std::endl;
+            std::cout << "Pre-processing function ";
+            kitty::print_binary( function, std::cout );
+            std::cout << ": " << std::endl;
+            std::cout << "\tnr_in = " << nr_in;
+            std::cout << "\ttt_size = " << tt_size << std::endl;
+            std::cout << "========================================";
+            std::cout << "========================================" << std::endl;
+            std::cout << std::endl;
+        }
+    }
+
+protected:
+    kitty::dynamic_truth_table function;
+    kitty::dynamic_truth_table dc_mask;
+    std::vector<kitty::dynamic_truth_table> compiled_primitives;
+    std::vector<kitty::dynamic_truth_table> compiled_free_primitives;
+
+public:
+    uint32_t fanin_size;
+    uint32_t nr_in;
+    uint32_t nr_steps = 1u;
+    uint32_t tt_size;
+    uint32_t nfree = 0u;
+    uint32_t verbosity = 0u;
+    uint32_t conflict_limit = 0u;
+
+    bool has_dc_mask = false;
+    bool use_contribution_clauses = true;
+
+};
+} /* percy */
 

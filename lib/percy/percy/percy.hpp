@@ -250,6 +250,94 @@ namespace percy
         return res;
     }
 
+    inline std::unique_ptr<ssv_encoder_minmc>
+    get_encoder_minmc(solver_wrapper& solver)
+    {
+        ssv_encoder_minmc* enc = nullptr;
+        std::unique_ptr<ssv_encoder_minmc> res;
+        enc = new ssv_encoder_minmc( solver );
+        res.reset(enc);
+
+        return res;
+    }
+
+    inline synth_result std_synthesize_minmc( spec_minmc & spec, chain_minmc & chain, 
+                                              synth_stats* stats = NULL )
+    {
+        spec.preprocess();
+
+        if ( stats )
+        {
+            stats->synth_time = 0;
+            stats->sat_time = 0;
+            stats->unsat_time = 0;
+            stats->nr_vars = 0;
+            stats->nr_clauses = 0;
+        }
+
+        auto solver = get_solver( SLV_BSAT2 );
+        auto encoder = get_encoder_minmc( *solver );
+
+        // specify upper limitation on #steps to synthesize here
+        uint32_t upper = ( spec.nfree == 0u ) ? MAX_STEPS : ( 2 * spec.nfree + 1);
+        while ( spec.nr_steps < upper )
+        {
+            solver->restart();
+            if ( !encoder->encode( spec ) )
+            {
+                ++spec.nr_steps;
+                continue;
+            }
+
+            if ( stats )
+            {
+                stats->nr_vars = solver->nr_vars();
+                stats->nr_clauses = solver->nr_clauses();
+            }
+
+            auto begin = std::chrono::steady_clock::now();
+            auto status = solver->solve( spec.conflict_limit );
+            auto end = std::chrono::steady_clock::now();
+            auto elapsed_time = 
+                std::chrono::duration_cast<std::chrono::microseconds>( end - begin ).count();
+
+            if ( stats )
+            {
+                stats->synth_time += elapsed_time;
+            }
+
+            if ( status == success )
+            {
+                std::cout << "Exact synthesis succeeded! \n";
+
+
+                encoder->extract_chain( spec, chain );
+                
+                if ( stats )
+                {
+                    stats->sat_time += elapsed_time;
+                }
+
+                return success;
+            }
+            else if ( status == failure )
+            {    
+                ++spec.nr_steps;
+                
+                if ( stats )
+                {
+                    stats->unsat_time += elapsed_time;
+                }
+            }
+            else
+            {
+                return timeout;
+            }
+        }
+
+        return failure;
+    }
+
     inline synth_result 
     fence_synthesize(spec& spec, chain& chain, solver_wrapper& solver, fence_encoder& encoder)
     {
@@ -1163,15 +1251,15 @@ namespace percy
         while (true) {
             solver.restart();
             if (!encoder.encode(spec)) {
-              if ( spec.nr_steps < MAX_STEPS )
-              {
-                spec.nr_steps++;
-                continue;
-              }
-              else
-              {
-                return failure;
-              }
+                if ( spec.nr_steps < MAX_STEPS )
+                {
+                    spec.nr_steps++;
+                    continue;
+                }
+                else
+                {
+                    return failure;
+                }
             }
 
             const auto status = solver.solve(spec.conflict_limit);

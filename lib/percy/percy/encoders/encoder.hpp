@@ -110,6 +110,11 @@ namespace percy
         std::fill(fanin_asgn.begin(), fanin_asgn.end(), 0);
     }
 
+    static inline void clear_assignment( std::vector<bool> & fanin_asgn )
+    {
+        std::fill( fanin_asgn.begin(), fanin_asgn.end(), false );
+    }
+
     static inline void
     next_assignment(std::vector<int>& asgn)
     {
@@ -118,6 +123,22 @@ namespace percy
                 asgn[i] = 0;
             } else {
                 asgn[i]++;
+                return;
+            }
+        }
+    }
+
+    static inline void next_assignment( std::vector<bool> & fanin_asgn )
+    {
+        for ( auto i = 0u; i < fanin_asgn.size(); ++i )
+        {
+            if ( fanin_asgn[i] )
+            {
+                fanin_asgn[i] = false;
+            }
+            else
+            {
+                fanin_asgn[i] = true;
                 return;
             }
         }
@@ -156,6 +177,21 @@ namespace percy
         return status;
     }
 
+    static inline bool is_zero( std::vector<bool> const& fanin_asgn )
+    {
+        auto status = true;
+        for ( const auto asgn: fanin_asgn )
+        {
+            if ( asgn )
+            {
+                status = false;
+                break;
+            }
+        }
+
+        return status;
+    }
+
     inline void fanin_init(std::vector<int>& fanins, int max_fanin_id)
     {
         fanins[fanins.size()-1] = max_fanin_id--;
@@ -164,10 +200,28 @@ namespace percy
         }
     }
 
+    inline void fanin_init( std::vector<uint32_t> & fanins, uint32_t max_fanin_id )
+    {
+        fanins[fanins.size() - 1] = max_fanin_id--;
+        for ( int i = fanins.size() - 2; i >= 0; --i ) 
+        {
+            fanins[i] = max_fanin_id--;
+        }
+    }
+
     inline void fanin_init(std::vector<int>& fanins, int max_fanin_id, int start_idx)
     {
         fanins[start_idx] = max_fanin_id--;
         for (int i = start_idx-1; i >= 0; i--) {
+            fanins[i] = max_fanin_id--;
+        }
+    }
+
+    inline void fanin_init( std::vector<uint32_t> & fanins, uint32_t max_fanin_id, uint32_t start_idx )
+    {
+        fanins[start_idx] = max_fanin_id--;
+        for ( int i = start_idx - 1; i >= 0; --i )
+        {
             fanins[i] = max_fanin_id--;
         }
     }
@@ -195,11 +249,52 @@ namespace percy
         return false;
     }
 
+    inline bool fanin_inc( std::vector<uint32_t> & fanins, const int max_fanin_id )
+    {
+        for ( int i = 0; i < fanins.size(); ++i )
+        {
+            if ( i < fanins.size() - 1 )
+            {
+                if ( fanins[i] < fanins[i + 1] - 1 )
+                {
+                    ++fanins[i];
+                    if ( i > 0 )
+                    {
+                        fanin_init( fanins, i - 1, i - 1 );
+                    }
+
+                    return true;
+                }
+            }
+            else
+            {
+                if ( fanins[i] < max_fanin_id )
+                {
+                    ++fanins[i];
+                    fanin_init( fanins, i - 1, i - 1 );
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
     inline void print_fanin(const std::vector<int>& fanins)
     {
         for (auto i = 0u; i < fanins.size(); i++) {
             printf("%d ", fanins[i] + 1);
         }
+    }
+
+    inline void print_fanin( std::vector<uint32_t> const& fanins )
+    {
+        std::cout << "Fanins: ";
+        for ( int i = 0u; i < fanins.size(); ++i )
+        {
+            std::cout << fanins[i] + 1 << " ";
+        }
+        std::cout << std::endl;
     }
 
     inline void print_fanin(const int* const fanins, int nr_fanins)

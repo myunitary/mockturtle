@@ -855,6 +855,76 @@ namespace percy
 
     };
 
-}
+class chain_minmc
+{
+
+public:
+    chain_minmc()
+    {
+        reset( 0u, 0u, 0u );
+    }
+
+    void reset( uint32_t pis, uint32_t nr_steps, uint32_t fanin_size)
+    {
+        this->pis = pis;
+        steps.resize( nr_steps );
+        this->fanin_size = fanin_size;
+        this->tt_size = ( 1 << fanin_size );
+        for ( auto & step: steps )
+        {
+            step.resize( fanin_size );
+        }
+        operators.resize( nr_steps );
+        output = pis + nr_steps;
+
+        return;
+    }
+
+    void set_compiled_functions( std::vector<kitty::dynamic_truth_table> functions )
+    {
+        compiled_functions = functions;
+
+        return;
+    }
+
+    void set_step( uint32_t idx, std::vector<uint32_t> const& fanin, kitty::dynamic_truth_table const& op )
+    {
+        for ( auto j = 0u; j < fanin_size; ++j)
+        {
+            steps[idx][j] = fanin[j]; 
+        }
+
+        operators[idx] = op;
+
+        return;
+    }
+
+    kitty::dynamic_truth_table get_operator( uint32_t idx ) const
+    {
+        return operators.at( idx );
+    }
+
+    std::vector<uint32_t> get_step( uint32_t idx ) const 
+    { 
+        return steps.at( idx ); 
+    }
+
+    int get_nr_steps() const
+    {
+        return steps.size();
+    }
+
+private:
+    uint32_t pis;
+    uint32_t fanin_size;
+    uint32_t tt_size;
+    std::vector<kitty::dynamic_truth_table> compiled_functions;
+    std::vector<std::vector<uint32_t>> steps;
+    std::vector<kitty::dynamic_truth_table> operators;
+    uint32_t output;
+
+}; /* chain_minmc */
+
+} /* percy */
 
 #include "printer.hpp"

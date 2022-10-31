@@ -1201,4 +1201,183 @@ TT spectral_representative( const TT& func )
   return r;
 }
 
+namespace detail
+{
+static std::vector<uint32_t> spectral_mc = {
+  0u, 4u, 3u, 4u, 2u, 3u, 4u, 4u, 3u, 3u, 
+  3u ,3u, 4u, 4u, 4u, 4u, 4u, 1u, 3u, 2u, 
+  3u, 3u, 3u, 3u, 3u, 4u, 4u, 4u, 4u, 4u, 
+  4u, 4u, 3u, 4u, 4u, 3u, 4u, 3u, 4u, 3u, 
+  4u, 4u, 4u, 4u, 2u, 4u, 3u, 4u};
+}
+
+template<typename TT>
+inline uint32_t get_spectral_mc( const TT& tt )
+{
+  static_assert( is_complete_truth_table<TT>::value, "Can only be applied on complete truth tables." );
+
+  assert( tt.num_vars() == 5 );
+
+  const auto rwd = spectrum_distribution( rademacher_walsh_spectrum( tt ) );
+
+  if ( rwd[16] )
+    return detail::spectral_mc.at( 0 );
+  else if ( rwd[15] )
+    return detail::spectral_mc.at( 1 );
+  else if ( rwd[14] )
+    return detail::spectral_mc.at( 2 );
+  else if ( rwd[13] )
+    return detail::spectral_mc.at( 3 );
+  else if ( rwd[12] )
+    return rwd[4] == 7 ? detail::spectral_mc.at( 4 ) : detail::spectral_mc.at( 5 );
+  else if ( rwd[11] )
+    return rwd[5] == 1 ? detail::spectral_mc.at( 6 ) : detail::spectral_mc.at( 7 );
+  else if ( rwd[10] )
+  {
+    switch ( rwd[2] )
+    {
+    case 30:
+      return detail::spectral_mc.at( 8 );
+    case 15:
+      return detail::spectral_mc.at( 9 );
+    case 14:
+      return detail::spectral_mc.at( 10 );
+    default:
+      return detail::spectral_mc.at( 11 );
+    }
+  }
+  else if ( rwd[9] )
+  {
+    switch ( rwd[3] )
+    {
+    case 15:
+      return detail::spectral_mc.at( 12 );
+    case 12:
+      return detail::spectral_mc.at( 13 );
+    case 9:
+      return detail::spectral_mc.at( 14 );
+    case 6:
+      return detail::spectral_mc.at( 15 );
+    default:
+      return detail::spectral_mc.at( 16 );
+    }
+  }
+  else if ( rwd[8] )
+  {
+    switch ( rwd[0] )
+    {
+    case 28:
+      return detail::spectral_mc.at( 17 );
+    case 19:
+      return detail::spectral_mc.at( 18 );
+    case 22:
+      return detail::spectral_mc.at( 19 );
+    case 7:
+      return detail::spectral_mc.at( 20 );
+    case 9:
+      return detail::spectral_mc.at( 21 );
+    case 10:
+      return detail::spectral_mc.at( 22 );
+    case 11:
+      return detail::spectral_mc.at( 23 );
+    default:
+      return detail::spectral_mc.at( 24 );
+    }
+  }
+  else if ( rwd[7] )
+  {
+    switch ( rwd[1] )
+    {
+    case 15:
+    {
+      const auto acd = spectrum_distribution( autocorrelation_spectrum( tt ) );
+      return acd[2] == 22 ? detail::spectral_mc.at( 25 ) : detail::spectral_mc.at( 26 );
+    }
+    break;
+    case 18:
+      return detail::spectral_mc.at( 27 );
+    case 19:
+      return detail::spectral_mc.at( 28 );
+    case 21:
+      return detail::spectral_mc.at( 29 );
+    default:
+      return detail::spectral_mc.at( 30 );
+    }
+  }
+  else if ( rwd[6] )
+  {
+    switch ( rwd[2] )
+    {
+    case 28:
+    {
+      const auto acd = spectrum_distribution( autocorrelation_spectrum( tt ) );
+      return acd[0] == 12 ? detail::spectral_mc.at( 31 ) : detail::spectral_mc.at( 32 );
+    }
+    break;
+    case 15:
+      return detail::spectral_mc.at( 33 );
+    case 14:
+    {
+      const auto acd = spectrum_distribution( autocorrelation_spectrum( tt ) );
+      return acd[0] == 15 ? detail::spectral_mc.at( 34 ) : detail::spectral_mc.at( 35 );
+    }
+    break;
+    case 13:
+      return detail::spectral_mc.at( 36 );
+    case 12:
+    {
+      const auto acd = spectrum_distribution( autocorrelation_spectrum( tt ) );
+      return acd[0] == 18 ? detail::spectral_mc.at( 37 ) : detail::spectral_mc.at( 38 );
+    }
+    break;
+    default:
+      return detail::spectral_mc.at( 39 );
+    }
+  }
+  else if ( rwd[5] )
+  {
+    switch ( rwd[3] )
+    {
+    case 16:
+      return detail::spectral_mc.at( 40 );
+    default:
+    {
+      const auto acd = spectrum_distribution( autocorrelation_spectrum( tt ) );
+      switch ( acd[2] )
+      {
+      case 25:
+        return detail::spectral_mc.at( 41 );
+      case 27:
+        return detail::spectral_mc.at( 42 );
+      default:
+        return detail::spectral_mc.at( 43 );
+      }
+    }
+    break;
+    }
+  }
+  else if ( rwd[4] )
+  {
+    switch ( rwd[0] )
+    {
+    case 16:
+    {
+      const auto acd = spectrum_distribution( autocorrelation_spectrum( tt ) );
+      switch ( acd[0] )
+      {
+      case 30:
+        return detail::spectral_mc.at( 44 );
+      case 15:
+        return detail::spectral_mc.at( 45 );
+      default:
+        return detail::spectral_mc.at( 46 );
+      }
+    }
+    break;
+    default:
+      return detail::spectral_mc.at( 47 );
+    }
+  }
+}
+
 } /* namespace kitty */

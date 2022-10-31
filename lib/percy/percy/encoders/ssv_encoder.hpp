@@ -267,6 +267,7 @@ namespace percy
                   int opvar_idx = 0;
                   clear_assignment(fanin_asgn);
                   while ( true ) {
+                    // iterate 'fanin_asgn' from all 0 to all 1
                     next_assignment(fanin_asgn);
                     if (is_zero(fanin_asgn)) {
                       break;
@@ -380,6 +381,7 @@ namespace percy
                 }
                 else
                 {
+                  // only the nr steps have corresponding sim_var
                   pabc::Vec_IntSetEntry(vLits, ctr++,
                     pabc::Abc_Var2Lit( get_sim_var( spec, child - spec.get_nr_in() - spec.get_nr_compiled_functions(), t ), assign ) );
                 }
