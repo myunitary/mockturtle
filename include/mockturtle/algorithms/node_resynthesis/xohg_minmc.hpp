@@ -102,8 +102,8 @@ public:
 
 		percy::spec_minmc spec;
 		spec.nr_in = tt.num_vars();
-		spec.fanin_size = 3;
-		spec.verbosity = 5;
+		spec.fanin_size = 3u;
+		spec.verbosity = 1u;
 		spec.use_contribution_clauses = _ps.use_contribution_clauses;
 		spec.conflict_limit = _ps.conflict_limit;
 		spec.set_output( normal ? tt : ~tt );
