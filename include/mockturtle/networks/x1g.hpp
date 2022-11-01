@@ -845,7 +845,7 @@ public:
 	{
 		auto node = _storage->nodes[n];
 		assert( node.children[0].data == node.children[1].data &&
-						node.children[0].data == ndoe.children[2].data );
+						node.children[0].data == node.children[2].data );
 		return static_cast<uint32_t>( node.children[0].data );
 	}
 
@@ -867,7 +867,7 @@ public:
 	{
 		auto node = _storage->nodes[n];
 		assert( node.children[0].data == node.children[1].data &&
-						ndoe.children[0].data == node.children[2].data );
+						node.children[0].data == node.children[2].data );
 		return static_cast<uint32_t>( node.children[0].data );
 	}
 
