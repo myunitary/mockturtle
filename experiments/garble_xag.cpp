@@ -19,6 +19,11 @@ static const std::string crypto_epfl_benchmarks[] = {
   "DES-expanded_untilsat", "DES-non-expanded_untilsat", "md5_untilsat", "mult_32x32_untilsat", "sha-1_untilsat", 
   "sha-256_untilsat"};
 
+static const std::string epfl_benchmarks_2022[] = {
+	"adder", "bar", "div", "log2", "max", "multiplier", "sin", "sqrt", "square", "arbiter", 
+	"cavlc", "ctrl" , "dec", "i2c", "int2float" , "mem_ctrl", "priority", "router", "voter", 
+	"hyp"};
+
 std::vector<std::string> crypto_benchmarks()
 {
 	std::vector<std::string> result;
@@ -30,9 +35,29 @@ std::vector<std::string> crypto_benchmarks()
 	return result;
 }
 
-std::string crypto_benchmark_path( std::string const& benchmark_name )
+std::vector<std::string> epfl_benchmarks_2022()
 {
-  return fmt::format( "../experiments/crypto_benchmarks/{}.v", benchmark_name );
+	std::vector<std::string> result;
+	for ( auto i = 0u; i < 20u; ++i )
+	{
+		result.emplace_back( epfl_benchmarks_2022[i] );
+	}
+
+	return result;
+}
+
+std::string benchmark_path( uint32_t benchmark_type = 0u, std::string const& benchmark_name )
+{
+	switch( benchmark_type )
+	{
+	case 0u:
+		return fmt::format( "../experiments/benchmarks-2022.1/{}.v", benchmark_name );
+	case 1u:
+		return fmt::format( "../experiments/crypto_benchmarks/{}.v", benchmark_name );
+	default:
+		std::cout << "Unspecified type of benchmark. \n";
+		abort();
+	}
 }
 
 void count_and_size_rec( merge_view & xag, mockturtle::xag_network::node const& f, mockturtle::xag_network::node const& root )
@@ -63,14 +88,15 @@ void count_and_size_rec( merge_view & xag, mockturtle::xag_network::node const& 
 
 int main()
 {
-	experiments::experiment<std::string, uint32_t, uint32_t, uint32_t, uint32_t, float, float> exp_res( "xohg_minmc", "benchmark", "num_and_before", "num_and_after", "garble_cost_before", "garble_cost_after", "improvement %", "avg. runtime [s]" );
+	experiments::experiment<std::string, uint32_t, uint32_t, uint32_t, uint32_t, float, float> exp_res( "garble_xag", "benchmark", "num_and_before", "num_and_after", "garble_cost_before", "garble_cost_after", "improvement %", "avg. runtime [s]" );
+	uint32_t benchmark_type = 0u; // 0u - epfl benchmark; 1u - crypto benchmark
 
 	for ( auto const& benchmark: crypto_benchmarks() )
 	{
 		std::cout << "[i] processing " << benchmark << std::endl;
 
 		mockturtle::xag_network xag;
-		auto const read_result = lorina::read_verilog( crypto_benchmark_path( benchmark ), mockturtle::verilog_reader( xag ) );
+		auto const read_result = lorina::read_verilog( benchmark_path( benchmark_type, benchmark ), mockturtle::verilog_reader( xag ) );
 		assert( read_result == lorina::return_code::success );
 
 		uint32_t num_and_bfr = 0u;
