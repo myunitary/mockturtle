@@ -27,7 +27,7 @@ static const std::string epfl_benchmarks_2022[] = {
 std::vector<std::string> crypto_benchmarks()
 {
 	std::vector<std::string> result;
-	for ( auto i = 0u; i < 33u; ++i )
+	for ( auto i = 0u; i < 1u; ++i )
 	{
 		result.emplace_back( crypto_epfl_benchmarks[i] );
 	}
@@ -35,10 +35,10 @@ std::vector<std::string> crypto_benchmarks()
 	return result;
 }
 
-std::vector<std::string> epfl_benchmarks_2022()
+std::vector<std::string> epfl_benchmarks()
 {
 	std::vector<std::string> result;
-	for ( auto i = 0u; i < 20u; ++i )
+	for ( auto i = 0u; i < 5u; ++i )
 	{
 		result.emplace_back( epfl_benchmarks_2022[i] );
 	}
@@ -46,7 +46,7 @@ std::vector<std::string> epfl_benchmarks_2022()
 	return result;
 }
 
-std::string benchmark_path( uint32_t benchmark_type = 0u, std::string const& benchmark_name )
+std::string benchmark_path( uint32_t benchmark_type, std::string const& benchmark_name )
 {
 	switch( benchmark_type )
 	{
@@ -90,8 +90,9 @@ int main()
 {
 	experiments::experiment<std::string, uint32_t, uint32_t, uint32_t, uint32_t, float, float> exp_res( "garble_xag", "benchmark", "num_and_before", "num_and_after", "garble_cost_before", "garble_cost_after", "improvement %", "avg. runtime [s]" );
 	uint32_t benchmark_type = 0u; // 0u - epfl benchmark; 1u - crypto benchmark
+	auto const benchmarks = benchmark_type ? crypto_benchmarks() : epfl_benchmarks();
 
-	for ( auto const& benchmark: crypto_benchmarks() )
+	for ( auto const& benchmark: benchmarks )
 	{
 		std::cout << "[i] processing " << benchmark << std::endl;
 
@@ -131,7 +132,7 @@ int main()
 			}
 		} );
 
-		float improve = ( ( garble_cost_bfr - garble_cost_aft ) / garble_cost_bfr ) * 100;
+		float improve = ( ( static_cast<float> ( garble_cost_bfr ) - static_cast<float> ( garble_cost_aft ) ) / static_cast<float> ( garble_cost_bfr ) ) * 100;
 
 		exp_res( benchmark, num_and_bfr, num_and_aft, garble_cost_bfr, garble_cost_aft, improve, ( float( clock() - begin_time ) / CLOCKS_PER_SEC ) );
 	}

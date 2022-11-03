@@ -28,7 +28,7 @@ static const std::string epfl_benchmarks_2022[] = {
 std::vector<std::string> crypto_benchmarks()
 {
 	std::vector<std::string> result;
-	for ( auto i = 0u; i < 33u; ++i )
+	for ( auto i = 0u; i < 1u; ++i )
 	{
 		result.emplace_back( crypto_epfl_benchmarks[i] );
 	}
@@ -36,10 +36,10 @@ std::vector<std::string> crypto_benchmarks()
 	return result;
 }
 
-std::vector<std::string> epfl_benchmarks_2022()
+std::vector<std::string> epfl_benchmarks()
 {
 	std::vector<std::string> result;
-	for ( auto i = 0u; i < 20u; ++i )
+	for ( auto i = 0u; i < 1u; ++i )
 	{
 		result.emplace_back( epfl_benchmarks_2022[i] );
 	}
@@ -47,7 +47,7 @@ std::vector<std::string> epfl_benchmarks_2022()
 	return result;
 }
 
-std::string benchmark_path( uint32_t benchmark_type = 0u, std::string const& benchmark_name )
+std::string benchmark_path( uint32_t benchmark_type, std::string const& benchmark_name )
 {
 	switch( benchmark_type )
 	{
@@ -62,11 +62,11 @@ std::string benchmark_path( uint32_t benchmark_type = 0u, std::string const& ben
 }
 
 template<class Ntk>
-bool abc_cec_crypto( Ntk const& ntk, std::string const& benchmark )
+bool abc_cec_crypto( Ntk const& ntk, uint32_t const& benchmark_type, std::string const& benchmark )
 {
 	mockturtle::write_bench( ntk, "/tmp/test.bench" );
 	std::string abc_path = "/Users/myu/Documents/GitHub/abc/";
-	std::string command = fmt::format( "{}abc -q \"cec -n {} /tmp/test.bench\"", abc_path, crypto_benchmark_path( benchmark ) );
+	std::string command = fmt::format( "{}abc -q \"cec -n {} /tmp/test.bench\"", abc_path, benchmark_path( benchmark_type, benchmark ) );
 
 	std::array<char, 128> buffer;
 	std::string result;
@@ -119,8 +119,9 @@ int main()
 {
 	experiments::experiment<std::string, uint32_t, uint32_t, float, uint32_t, float, bool> exp_res( "garble_xohg", "benchmark", "num_oh_before", "num_oh_after", "improvement %", "iterations", "avg. runtime [s]", "equivalent" );
 	uint32_t benchmark_type = 0u; // 0u - epfl benchmark; 1u - crypto benchmark
+	auto const benchmarks = benchmark_type ? crypto_benchmarks() : epfl_benchmarks();
 
-	for ( auto const& benchmark: crypto_benchmarks() )
+	for ( auto const& benchmark: benchmarks )
 	{
 		std::cout << "[i] processing " << benchmark << std::endl;
 
@@ -197,6 +198,7 @@ int main()
 			}
 		} );
 		num_oh_bfr = num_oh;
+		num_oh_aft = num_oh - 1u;
 
 		/* make the cache static? */
 		mockturtle::exact_xohg_resynthesis_minmc_params ps_xohg_resyn;
@@ -213,8 +215,11 @@ int main()
 		const clock_t begin_time = clock();
 		while ( num_oh > num_oh_aft )
 		{
+			if ( ite_cnt > 0u )
+			{
+				num_oh = num_oh_aft;
+			}
 			++ite_cnt;
-			num_oh = num_oh_aft;
 			num_oh_aft = 0u;
 
 			mockturtle::cut_rewriting_with_compatibility_graph( x1g, xohg_resyn, ps_cut_rew, nullptr, ::detail::num_oh<mockturtle::x1g_network>() );
@@ -229,9 +234,9 @@ int main()
 			} );
 		}
 
-		const auto cec = abc_cec_crypto( x1g, benchmark );
+		const auto cec = abc_cec_crypto( x1g, benchmark_type, benchmark );
 
-		float improve = ( ( num_oh_bfr - num_oh_aft ) / num_oh_bfr ) * 100;
+		float improve = ( ( static_cast<float> ( num_oh_bfr ) - static_cast<float> ( num_oh_aft ) ) / static_cast<float> ( num_oh_bfr ) ) * 100;
 
 		exp_res( benchmark, num_oh_bfr, num_oh_aft, improve, ite_cnt, ( float( clock() - begin_time ) / CLOCKS_PER_SEC ) / ite_cnt, cec );
 
