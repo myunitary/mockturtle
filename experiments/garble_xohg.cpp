@@ -157,7 +157,8 @@ int main()
 		//
 
 		mockturtle::x1g_network x1g;
-		lorina::read_verilog( crypto_benchmark_path( benchmark ), mockturtle::verilog_reader( x1g ) );
+		auto const read_result = lorina::read_verilog( crypto_benchmark_path( benchmark ), mockturtle::verilog_reader( x1g ) );
+		assert( read_result == lorina::return_code::success );
 
 		uint32_t num_oh = 0u;
 		uint32_t num_oh_bfr = 0u;
@@ -171,7 +172,7 @@ int main()
 		} );
 		num_oh_bfr = num_oh;
 
-		/* make the cache global? */
+		/* make the cache static? */
 		mockturtle::exact_xohg_resynthesis_minmc_params ps_xohg_resyn;
 		ps_xohg_resyn.print_stats = true;
 		ps_xohg_resyn.cache = std::make_shared<mockturtle::exact_xohg_resynthesis_minmc_params::cache_map_t>();
