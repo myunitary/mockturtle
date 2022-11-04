@@ -203,6 +203,7 @@ int main()
 		/* make the cache static? */
 		mockturtle::exact_xohg_resynthesis_minmc_params ps_xohg_resyn;
 		ps_xohg_resyn.print_stats = true;
+		ps_xohg_resyn.conflict_limit = 1000000u;
 		ps_xohg_resyn.cache = std::make_shared<mockturtle::exact_xohg_resynthesis_minmc_params::cache_map_t>();
 		ps_xohg_resyn.blacklist_cache = std::make_shared<mockturtle::exact_xohg_resynthesis_minmc_params::blacklist_cache_map_t>();
 
