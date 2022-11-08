@@ -1,131 +1,111 @@
-// Benchmark "voting_BMR_2_2" written by ABC on Tue Nov 26 14:00:41 2019
-
-module voting_BMR_2_2 ( 
-    \p_input[0] , \p_input[1] , \p_input[2] , \p_input[3] , \p_input[4] ,
-    \p_input[5] , \p_input[6] , \p_input[7] ,
-    \o[0] , \o[1]   );
-  input  \p_input[0] , \p_input[1] , \p_input[2] , \p_input[3] ,
-    \p_input[4] , \p_input[5] , \p_input[6] , \p_input[7] ;
-  output \o[0] , \o[1] ;
-  wire new_n11_, new_n12_, new_n13_, new_n14_, new_n15_, new_n16_, new_n17_,
-    new_n18_, new_n19_, new_n20_, new_n21_, new_n22_, new_n23_, new_n24_,
-    new_n25_, new_n26_, new_n27_, new_n28_, new_n29_, new_n30_, new_n31_,
-    new_n32_, new_n33_, new_n34_, new_n35_, new_n36_, new_n37_, new_n38_,
-    new_n39_, new_n40_, new_n41_, new_n42_, new_n43_, new_n44_, new_n45_,
-    new_n46_, new_n47_, new_n48_, new_n49_, new_n50_, new_n51_, new_n52_,
-    new_n53_, new_n54_, new_n55_, new_n56_, new_n57_, new_n58_, new_n59_,
-    new_n60_, new_n61_, new_n62_, new_n63_, new_n64_, new_n65_, new_n66_,
-    new_n67_, new_n68_, new_n69_, new_n70_, new_n71_, new_n72_, new_n73_,
-    new_n74_, new_n75_, new_n76_, new_n77_, new_n78_, new_n79_, new_n80_,
-    new_n81_, new_n82_, new_n83_, new_n84_, new_n85_, new_n86_, new_n87_,
-    new_n88_, new_n89_, new_n90_, new_n91_, new_n92_, new_n93_, new_n94_,
-    new_n95_, new_n96_, new_n97_, new_n98_, new_n99_, new_n100_, new_n101_,
-    new_n102_, new_n103_, new_n104_, new_n105_, new_n106_, new_n107_,
-    new_n108_, new_n109_, new_n110_, new_n112_, new_n113_;
-  assign new_n11_ = \p_input[0]  & \p_input[1] ;
-  assign new_n12_ = \p_input[6]  & \p_input[7] ;
-  assign new_n13_ = \p_input[4]  & \p_input[5] ;
-  assign new_n14_ = \p_input[2]  & \p_input[3] ;
-  assign new_n15_ = ~new_n13_ & ~new_n14_;
-  assign new_n16_ = new_n13_ & new_n14_;
-  assign new_n17_ = ~new_n15_ & ~new_n16_;
-  assign new_n18_ = new_n12_ & ~new_n17_;
-  assign new_n19_ = ~new_n12_ & new_n17_;
-  assign new_n20_ = ~new_n18_ & ~new_n19_;
-  assign new_n21_ = new_n11_ & ~new_n20_;
-  assign new_n22_ = ~new_n12_ & ~new_n16_;
-  assign new_n23_ = ~new_n15_ & ~new_n22_;
-  assign new_n24_ = new_n21_ & new_n23_;
-  assign new_n25_ = ~new_n21_ & ~new_n23_;
-  assign new_n26_ = ~new_n24_ & ~new_n25_;
-  assign new_n27_ = ~\p_input[0]  & \p_input[1] ;
-  assign new_n28_ = ~\p_input[6]  & \p_input[7] ;
-  assign new_n29_ = ~\p_input[4]  & \p_input[5] ;
-  assign new_n30_ = ~\p_input[2]  & \p_input[3] ;
-  assign new_n31_ = ~new_n29_ & ~new_n30_;
-  assign new_n32_ = new_n29_ & new_n30_;
-  assign new_n33_ = ~new_n31_ & ~new_n32_;
-  assign new_n34_ = new_n28_ & ~new_n33_;
-  assign new_n35_ = ~new_n28_ & new_n33_;
-  assign new_n36_ = ~new_n34_ & ~new_n35_;
-  assign new_n37_ = new_n27_ & ~new_n36_;
-  assign new_n38_ = ~new_n27_ & new_n36_;
-  assign new_n39_ = ~new_n37_ & ~new_n38_;
-  assign new_n40_ = ~new_n11_ & new_n20_;
-  assign new_n41_ = ~new_n21_ & ~new_n40_;
-  assign new_n42_ = new_n39_ & ~new_n41_;
-  assign new_n43_ = ~new_n26_ & new_n42_;
-  assign new_n44_ = ~new_n28_ & ~new_n32_;
-  assign new_n45_ = ~new_n31_ & ~new_n44_;
-  assign new_n46_ = ~new_n37_ & ~new_n45_;
-  assign new_n47_ = new_n26_ & ~new_n42_;
-  assign new_n48_ = ~new_n46_ & ~new_n47_;
-  assign new_n49_ = ~new_n43_ & ~new_n48_;
-  assign new_n50_ = \p_input[0]  & ~\p_input[1] ;
-  assign new_n51_ = \p_input[6]  & ~\p_input[7] ;
-  assign new_n52_ = \p_input[4]  & ~\p_input[5] ;
-  assign new_n53_ = \p_input[2]  & ~\p_input[3] ;
-  assign new_n54_ = ~new_n52_ & ~new_n53_;
-  assign new_n55_ = new_n52_ & new_n53_;
-  assign new_n56_ = ~new_n54_ & ~new_n55_;
-  assign new_n57_ = new_n51_ & ~new_n56_;
-  assign new_n58_ = ~new_n51_ & new_n56_;
-  assign new_n59_ = ~new_n57_ & ~new_n58_;
-  assign new_n60_ = new_n50_ & ~new_n59_;
-  assign new_n61_ = ~new_n51_ & ~new_n55_;
-  assign new_n62_ = ~new_n54_ & ~new_n61_;
-  assign new_n63_ = new_n60_ & new_n62_;
-  assign new_n64_ = ~\p_input[4]  & ~\p_input[5] ;
-  assign new_n65_ = ~\p_input[2]  & ~\p_input[3] ;
-  assign new_n66_ = ~new_n64_ & ~new_n65_;
-  assign new_n67_ = ~\p_input[6]  & ~\p_input[7] ;
-  assign new_n68_ = new_n64_ & new_n65_;
-  assign new_n69_ = ~new_n66_ & ~new_n68_;
-  assign new_n70_ = ~new_n67_ & new_n69_;
-  assign new_n71_ = ~new_n66_ & ~new_n70_;
-  assign new_n72_ = ~\p_input[0]  & ~\p_input[1] ;
-  assign new_n73_ = new_n67_ & ~new_n69_;
-  assign new_n74_ = ~new_n70_ & ~new_n73_;
-  assign new_n75_ = new_n72_ & ~new_n74_;
-  assign new_n76_ = new_n71_ & new_n75_;
-  assign new_n77_ = ~new_n63_ & ~new_n76_;
-  assign new_n78_ = new_n37_ & new_n45_;
-  assign new_n79_ = ~new_n24_ & ~new_n78_;
-  assign new_n80_ = new_n77_ & ~new_n79_;
-  assign new_n81_ = ~new_n77_ & new_n79_;
-  assign new_n82_ = ~new_n46_ & ~new_n78_;
-  assign new_n83_ = ~new_n26_ & ~new_n82_;
-  assign new_n84_ = ~new_n60_ & ~new_n62_;
-  assign new_n85_ = ~new_n63_ & ~new_n84_;
-  assign new_n86_ = ~new_n71_ & ~new_n75_;
-  assign new_n87_ = ~new_n76_ & ~new_n86_;
-  assign new_n88_ = ~new_n85_ & ~new_n87_;
-  assign new_n89_ = new_n83_ & ~new_n88_;
-  assign new_n90_ = ~new_n72_ & new_n74_;
-  assign new_n91_ = ~new_n75_ & ~new_n90_;
-  assign new_n92_ = new_n85_ & ~new_n87_;
-  assign new_n93_ = ~new_n50_ & new_n59_;
-  assign new_n94_ = ~new_n60_ & ~new_n93_;
-  assign new_n95_ = new_n91_ & ~new_n94_;
-  assign new_n96_ = ~new_n92_ & new_n95_;
-  assign new_n97_ = new_n84_ & ~new_n86_;
-  assign new_n98_ = ~new_n96_ & ~new_n97_;
-  assign new_n99_ = ~new_n63_ & ~new_n98_;
-  assign new_n100_ = ~new_n91_ & new_n99_;
-  assign new_n101_ = ~new_n94_ & ~new_n99_;
-  assign new_n102_ = new_n39_ & ~new_n49_;
-  assign new_n103_ = new_n41_ & ~new_n48_;
-  assign new_n104_ = ~new_n83_ & new_n88_;
-  assign new_n105_ = ~new_n103_ & ~new_n104_;
-  assign new_n106_ = ~new_n102_ & new_n105_;
-  assign new_n107_ = ~new_n100_ & new_n106_;
-  assign new_n108_ = ~new_n101_ & new_n107_;
-  assign new_n109_ = ~new_n81_ & ~new_n89_;
-  assign new_n110_ = ~new_n108_ & new_n109_;
-  assign \o[1]  = new_n80_ | new_n110_;
-  assign new_n112_ = ~new_n49_ & \o[1] ;
-  assign new_n113_ = new_n99_ & ~\o[1] ;
-  assign \o[0]  = ~new_n112_ & ~new_n113_;
+module top( x0 , x1 , x2 , x3 , x4 , x5 , x6 , x7 , y0 , y1 );
+  input x0 , x1 , x2 , x3 , x4 , x5 , x6 , x7 ;
+  output y0 , y1 ;
+  wire n9 , n10 , n11 , n12 , n13 , n14 , n15 , n16 , n17 , n18 , n19 , n20 , n21 , n22 , n23 , n24 , n25 , n26 , n27 , n28 , n29 , n30 , n31 , n32 , n33 , n34 , n35 , n36 , n37 , n38 , n39 , n40 , n41 , n42 , n43 , n44 , n45 , n46 , n47 , n48 , n49 , n50 , n51 , n52 , n53 , n54 , n55 , n56 , n57 , n58 , n59 , n60 , n61 , n62 , n63 , n64 , n65 , n66 , n67 , n68 , n69 , n70 , n71 , n72 , n73 , n74 , n75 , n76 , n77 , n78 , n79 , n80 , n81 , n82 , n83 , n84 , n85 , n86 , n87 , n88 , n89 , n90 , n91 , n92 , n93 , n94 , n95 , n96 , n97 , n98 , n99 , n100 , n101 , n102 , n103 , n104 , n105 , n106 , n107 , n108 , n109 , n110 , n111 , n112 ;
+  assign n9 = x0 & x1 ;
+  assign n10 = x6 & x7 ;
+  assign n11 = x4 & x5 ;
+  assign n12 = x2 & x3 ;
+  assign n13 = ~n11 & ~n12 ;
+  assign n14 = n11 & n12 ;
+  assign n15 = ~n13 & ~n14 ;
+  assign n16 = n10 & ~n15 ;
+  assign n17 = ~n10 & n15 ;
+  assign n18 = ~n16 & ~n17 ;
+  assign n19 = n9 & ~n18 ;
+  assign n20 = ~n10 & ~n14 ;
+  assign n21 = ~n13 & ~n20 ;
+  assign n22 = n19 & n21 ;
+  assign n23 = ~n19 & ~n21 ;
+  assign n24 = ~n22 & ~n23 ;
+  assign n25 = ~x0 & x1 ;
+  assign n26 = ~x6 & x7 ;
+  assign n27 = ~x4 & x5 ;
+  assign n28 = ~x2 & x3 ;
+  assign n29 = ~n27 & ~n28 ;
+  assign n30 = n27 & n28 ;
+  assign n31 = ~n29 & ~n30 ;
+  assign n32 = n26 & ~n31 ;
+  assign n33 = ~n26 & n31 ;
+  assign n34 = ~n32 & ~n33 ;
+  assign n35 = n25 & ~n34 ;
+  assign n36 = ~n25 & n34 ;
+  assign n37 = ~n35 & ~n36 ;
+  assign n38 = ~n9 & n18 ;
+  assign n39 = ~n19 & ~n38 ;
+  assign n40 = n37 & ~n39 ;
+  assign n41 = ~n24 & n40 ;
+  assign n42 = ~n26 & ~n30 ;
+  assign n43 = ~n29 & ~n42 ;
+  assign n44 = ~n35 & ~n43 ;
+  assign n45 = n24 & ~n40 ;
+  assign n46 = ~n44 & ~n45 ;
+  assign n47 = ~n41 & ~n46 ;
+  assign n48 = x0 & ~x1 ;
+  assign n49 = x6 & ~x7 ;
+  assign n50 = x4 & ~x5 ;
+  assign n51 = x2 & ~x3 ;
+  assign n52 = ~n50 & ~n51 ;
+  assign n53 = n50 & n51 ;
+  assign n54 = ~n52 & ~n53 ;
+  assign n55 = n49 & ~n54 ;
+  assign n56 = ~n49 & n54 ;
+  assign n57 = ~n55 & ~n56 ;
+  assign n58 = n48 & ~n57 ;
+  assign n59 = ~n49 & ~n53 ;
+  assign n60 = ~n52 & ~n59 ;
+  assign n61 = n58 & n60 ;
+  assign n62 = ~x4 & ~x5 ;
+  assign n63 = ~x2 & ~x3 ;
+  assign n64 = ~n62 & ~n63 ;
+  assign n65 = ~x6 & ~x7 ;
+  assign n66 = n62 & n63 ;
+  assign n67 = ~n64 & ~n66 ;
+  assign n68 = ~n65 & n67 ;
+  assign n69 = ~n64 & ~n68 ;
+  assign n70 = ~x0 & ~x1 ;
+  assign n71 = n65 & ~n67 ;
+  assign n72 = ~n68 & ~n71 ;
+  assign n73 = n70 & ~n72 ;
+  assign n74 = n69 & n73 ;
+  assign n75 = ~n61 & ~n74 ;
+  assign n76 = n35 & n43 ;
+  assign n77 = ~n22 & ~n76 ;
+  assign n78 = n75 & ~n77 ;
+  assign n79 = ~n48 & n57 ;
+  assign n80 = ~n58 & ~n79 ;
+  assign n81 = ~n58 & ~n60 ;
+  assign n82 = ~n61 & ~n81 ;
+  assign n83 = ~n69 & ~n73 ;
+  assign n84 = ~n74 & ~n83 ;
+  assign n85 = n82 & ~n84 ;
+  assign n86 = ~n70 & n72 ;
+  assign n87 = ~n73 & ~n86 ;
+  assign n88 = ~n80 & n87 ;
+  assign n89 = ~n85 & n88 ;
+  assign n90 = n81 & ~n83 ;
+  assign n91 = ~n89 & ~n90 ;
+  assign n92 = ~n61 & ~n91 ;
+  assign n93 = ~n80 & ~n92 ;
+  assign n94 = ~n87 & n92 ;
+  assign n95 = n37 & ~n47 ;
+  assign n96 = n39 & ~n46 ;
+  assign n97 = ~n44 & ~n76 ;
+  assign n98 = ~n24 & ~n97 ;
+  assign n99 = ~n82 & ~n84 ;
+  assign n100 = ~n98 & n99 ;
+  assign n101 = ~n96 & ~n100 ;
+  assign n102 = ~n95 & n101 ;
+  assign n103 = ~n94 & n102 ;
+  assign n104 = ~n93 & n103 ;
+  assign n105 = ~n75 & n77 ;
+  assign n106 = n98 & ~n99 ;
+  assign n107 = ~n105 & ~n106 ;
+  assign n108 = ~n104 & n107 ;
+  assign n109 = ~n78 & ~n108 ;
+  assign n110 = ~n47 & ~n109 ;
+  assign n111 = n92 & n109 ;
+  assign n112 = ~n110 & ~n111 ;
+  assign y0 = n112 ;
+  assign y1 = ~n109 ;
 endmodule
-
-

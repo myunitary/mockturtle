@@ -12,25 +12,29 @@
 
 #include <experiments.hpp>
 
-static const std::string crypto_epfl_benchmarks[] = {
-	"adder_untilsat", "bar_untilsat", "div_untilsat", "log2_untilsat", "max_untilsat", "multiplier_untilsat", "sin_untilsat", "sqrt_untilsat", "square_untilsat",
-  "arbiter_untilsat", "cavlc_untilsat", "ctrl_untilsat" , "dec_untilsat", "i2c_untilsat", "int2float_untilsat" , "mem_ctrl_untilsat", "priority_untilsat", "router_untilsat", "voter_untilsat", 
+static const std::string EPFL_benchmarks[] = {
+	"adder", "bar", "div", "log2", "max", "multiplier", "sin", "sqrt", "square", "arbiter", 
+	"cavlc", "ctrl" , "dec", "i2c", "int2float" , "mem_ctrl", "priority", "router", "voter", 
+	"hyp"};
+
+static const std::string CRYPTO_benchmarks[] = {
   "adder_32bit_untilsat", "adder_64bit_untilsat", "AES-expanded_untilsat", "AES-non-expanded_unstilsat", 
   "comparator_32bit_signed_lt_untilsat", "comparator_32bit_signed_lteq_untilsat", "comparator_32bit_unsigned_lt_untilsat", "comparator_32bit_unsigned_lteq_untilsat", 
   "DES-expanded_untilsat", "DES-non-expanded_untilsat", "md5_untilsat", "mult_32x32_untilsat", "sha-1_untilsat", 
   "sha-256_untilsat"};
 
-static const std::string epfl_benchmarks_2022[] = {
-	"adder", "bar", "div", "log2", "max", "multiplier", "sin", "sqrt", "square", "arbiter", 
-	"cavlc", "ctrl" , "dec", "i2c", "int2float" , "mem_ctrl", "priority", "router", "voter", 
-	"hyp"};
+static const std::string MPC_benchmarks[] = {
+  "auction_N_2_W_16", "auction_N_2_W_32", "auction_N_3_W_16", "auction_N_3_W_32", "auction_N_4_W_16", "auction_N_4_W_32", 
+  "knn_comb_K_1_N_8", "knn_comb_K_1_N_16", "knn_comb_K_2_N_8", "knn_comb_K_2_N_16", "knn_comb_K_3_N_8", "knn_comb_K_3_N_16", 
+  "voting_N_1_M_3", "voting_N_1_M_4", "voting_N_2_M_2", "voting_N_2_M_3", "voting_N_2_M_4", "voting_N_3_M_4", 
+  "stable_matching_comb_Ks_4_S_8", "stable_matching_comb_Ks_8_S_8"};
 
 std::vector<std::string> crypto_benchmarks()
 {
 	std::vector<std::string> result;
-	for ( auto i = 0u; i < 1u; ++i )
+	for ( auto i = 0u; i < 14u; ++i )
 	{
-		result.emplace_back( crypto_epfl_benchmarks[i] );
+		result.emplace_back( CRYPTO_benchmarks[i] );
 	}
 
 	return result;
@@ -39,9 +43,20 @@ std::vector<std::string> crypto_benchmarks()
 std::vector<std::string> epfl_benchmarks()
 {
 	std::vector<std::string> result;
-	for ( auto i = 0u; i < 1u; ++i )
+	for ( auto i = 0u; i < 20u; ++i )
 	{
-		result.emplace_back( epfl_benchmarks_2022[i] );
+		result.emplace_back( EPFL_benchmarks[i] );
+	}
+
+	return result;
+}
+
+std::vector<std::string> mpc_benchmarks()
+{
+	std::vector<std::string> result;
+	for ( auto i = 0u; i < 20u; ++i )
+	{
+		result.emplace_back( MPC_benchmarks[i] );
 	}
 
 	return result;
@@ -52,9 +67,11 @@ std::string benchmark_path( uint32_t benchmark_type, std::string const& benchmar
 	switch( benchmark_type )
 	{
 	case 0u:
-		return fmt::format( "../experiments/benchmarks-2022.1/{}.v", benchmark_name );
+		return fmt::format( "../experiments/epfl_benchmarks/{}.v", benchmark_name );
 	case 1u:
 		return fmt::format( "../experiments/crypto_benchmarks/{}.v", benchmark_name );
+	case 2u:
+		return fmt::format( "../experiments/mpc_benchmarks/{}.v", benchmark_name );
 	default:
 		std::cout << "Unspecified type of benchmark. \n";
 		abort();
@@ -118,8 +135,8 @@ struct num_maj
 int main()
 {
 	experiments::experiment<std::string, uint32_t, uint32_t, float, uint32_t, float, bool> exp_res( "garble_xohg", "benchmark", "num_oh_before", "num_oh_after", "improvement %", "iterations", "avg. runtime [s]", "equivalent" );
-	uint32_t benchmark_type = 0u; // 0u - epfl benchmark; 1u - crypto benchmark
-	auto const benchmarks = benchmark_type ? crypto_benchmarks() : epfl_benchmarks();
+	uint32_t benchmark_type = 0u; /* 0u - epfl benchmark; 1u - crypto benchmark; 2u - mpc benchmark */
+	auto const benchmarks = benchmark_type ? ( ( benchmark_type == 1u ) ? crypto_benchmarks() : mpc_benchmarks() ) : epfl_benchmarks();
 
 	for ( auto const& benchmark: benchmarks )
 	{

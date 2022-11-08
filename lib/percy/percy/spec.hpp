@@ -427,6 +427,13 @@ public:
         return;
     }
 
+    void set_steps_upper( uint32_t steps_upper )
+    {
+        nr_steps_upper = steps_upper;
+
+        return;
+    }
+
     void set_output( kitty::dynamic_truth_table const& tt )
     {
         function = tt;
@@ -538,6 +545,7 @@ public:
     uint32_t nr_steps = 1u;
     uint32_t tt_size;
     uint32_t nfree = 0u;
+    uint32_t nr_steps_upper = 0u;
     uint32_t verbosity = 0u;
     uint32_t conflict_limit = 0u;
 

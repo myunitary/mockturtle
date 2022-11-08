@@ -279,8 +279,16 @@ namespace percy
         auto encoder = get_encoder_minmc( *solver );
 
         // specify upper limitation on #steps to synthesize here
-        uint32_t upper = ( spec.nfree == 0u ) ? MAX_STEPS : ( 2 * spec.nfree + 1);
-        while ( spec.nr_steps < upper )
+        uint32_t upper;
+        if ( spec.nr_steps_upper == 0u )
+        {
+            upper = ( spec.nfree == 0u ) ? MAX_STEPS : ( ( spec.conflict_limit == 0u ) ? 2 * spec.nfree + 1 : MAX_STEPS );
+        }
+        else
+        {
+            upper = spec.nr_steps_upper;
+        }
+        while ( spec.nr_steps <= upper )
         {
             solver->restart();
             if ( !encoder->encode( spec ) )

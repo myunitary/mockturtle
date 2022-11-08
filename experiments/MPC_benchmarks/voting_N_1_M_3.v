@@ -1,47 +1,36 @@
-// Benchmark "voting_BMR_1_3" written by ABC on Tue Nov 26 13:54:12 2019
-
-module voting_BMR_1_3 ( 
-    \p_input[0] , \p_input[1] , \p_input[2] , \p_input[3] , \p_input[4] ,
-    \p_input[5] , \p_input[6] , \p_input[7] ,
-    o  );
-  input  \p_input[0] , \p_input[1] , \p_input[2] , \p_input[3] ,
-    \p_input[4] , \p_input[5] , \p_input[6] , \p_input[7] ;
-  output o;
-  wire new_n10_, new_n11_, new_n12_, new_n13_, new_n14_, new_n15_, new_n16_,
-    new_n17_, new_n18_, new_n19_, new_n20_, new_n21_, new_n22_, new_n23_,
-    new_n24_, new_n25_, new_n26_, new_n27_, new_n28_, new_n29_, new_n30_,
-    new_n31_, new_n32_, new_n33_, new_n34_, new_n35_, new_n36_, new_n37_,
-    new_n38_;
-  assign new_n10_ = \p_input[2]  & \p_input[3] ;
-  assign new_n11_ = ~\p_input[2]  & ~\p_input[3] ;
-  assign new_n12_ = ~new_n10_ & ~new_n11_;
-  assign new_n13_ = \p_input[4]  & new_n12_;
-  assign new_n14_ = ~new_n10_ & ~new_n13_;
-  assign new_n15_ = \p_input[5]  & \p_input[6] ;
-  assign new_n16_ = ~\p_input[5]  & ~\p_input[6] ;
-  assign new_n17_ = ~new_n15_ & ~new_n16_;
-  assign new_n18_ = \p_input[7]  & new_n17_;
-  assign new_n19_ = ~new_n15_ & ~new_n18_;
-  assign new_n20_ = ~\p_input[7]  & ~new_n17_;
-  assign new_n21_ = ~new_n18_ & ~new_n20_;
-  assign new_n22_ = ~\p_input[1]  & ~new_n21_;
-  assign new_n23_ = \p_input[1]  & new_n21_;
-  assign new_n24_ = ~\p_input[4]  & ~new_n12_;
-  assign new_n25_ = ~new_n13_ & ~new_n24_;
-  assign new_n26_ = ~new_n23_ & ~new_n25_;
-  assign new_n27_ = ~new_n22_ & ~new_n26_;
-  assign new_n28_ = new_n19_ & ~new_n27_;
-  assign new_n29_ = new_n14_ & new_n28_;
-  assign new_n30_ = ~new_n22_ & ~new_n23_;
-  assign new_n31_ = ~new_n25_ & new_n30_;
-  assign new_n32_ = new_n25_ & ~new_n30_;
-  assign new_n33_ = ~new_n31_ & ~new_n32_;
-  assign new_n34_ = \p_input[0]  & ~new_n33_;
-  assign new_n35_ = ~new_n29_ & new_n34_;
-  assign new_n36_ = ~new_n19_ & new_n27_;
-  assign new_n37_ = new_n14_ & ~new_n36_;
-  assign new_n38_ = ~new_n28_ & ~new_n37_;
-  assign o = new_n35_ | new_n38_;
+module top( x0 , x1 , x2 , x3 , x4 , x5 , x6 , x7 , y0 );
+  input x0 , x1 , x2 , x3 , x4 , x5 , x6 , x7 ;
+  output y0 ;
+  wire n9 , n10 , n11 , n12 , n13 , n14 , n15 , n16 , n17 , n18 , n19 , n20 , n21 , n22 , n23 , n24 , n25 , n26 , n27 , n28 , n29 , n30 , n31 , n32 , n33 , n34 , n35 , n36 , n37 , n38 ;
+  assign n9 = x2 & x3 ;
+  assign n10 = ~x2 & ~x3 ;
+  assign n11 = ~n9 & ~n10 ;
+  assign n12 = x4 & n11 ;
+  assign n13 = ~n9 & ~n12 ;
+  assign n14 = x5 & x6 ;
+  assign n15 = ~x5 & ~x6 ;
+  assign n16 = ~n14 & ~n15 ;
+  assign n17 = x7 & n16 ;
+  assign n18 = ~n14 & ~n17 ;
+  assign n19 = ~x7 & ~n16 ;
+  assign n20 = ~n17 & ~n19 ;
+  assign n21 = ~x1 & ~n20 ;
+  assign n22 = x1 & n20 ;
+  assign n23 = ~x4 & ~n11 ;
+  assign n24 = ~n12 & ~n23 ;
+  assign n25 = ~n22 & ~n24 ;
+  assign n26 = ~n21 & ~n25 ;
+  assign n27 = n18 & ~n26 ;
+  assign n28 = n13 & n27 ;
+  assign n29 = ~n21 & ~n22 ;
+  assign n30 = ~n24 & n29 ;
+  assign n31 = n24 & ~n29 ;
+  assign n32 = ~n30 & ~n31 ;
+  assign n33 = x0 & ~n32 ;
+  assign n34 = ~n28 & n33 ;
+  assign n35 = ~n18 & n26 ;
+  assign n36 = n13 & ~n35 ;
+  assign n37 = ~n27 & ~n36 ;
+  assign n38 = ~n34 & ~n37 ;
+  assign y0 = ~n38 ;
 endmodule
-
-
