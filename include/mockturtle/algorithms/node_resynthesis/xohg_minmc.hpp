@@ -400,7 +400,7 @@ void look_up_mc( kitty::dynamic_truth_table const& tt, uint32_t & mc, bool & val
 		{
 			/* need a func. to quickly figure out mc of a given tt */
 			const auto tt_lookup = tt.num_vars() < 5u ? kitty::extend_to( tt, 5u ) : tt;
-			mc = kitty::get_spectral_mc( tt );
+			mc = kitty::get_spectral_mc( tt_lookup );
 			valid_mc = true;
 		}
 	}
