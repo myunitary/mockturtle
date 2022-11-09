@@ -5,10 +5,12 @@
 #include <mockturtle/networks/xmg.hpp>
 #include <mockturtle/networks/x1g.hpp>
 #include <mockturtle/algorithms/cut_rewriting.hpp>
-#include <mockturtle/algorithms/node_resynthesis/xag_minmc.hpp>
 #include <mockturtle/algorithms/node_resynthesis/xohg_minmc.hpp>
+#include <mockturtle/algorithms/node_resynthesis/x1g_npn.hpp>
 #include <mockturtle/algorithms/cleanup.hpp>
 #include <mockturtle/io/verilog_reader.hpp>
+#include <mockturtle/utils/node_map.hpp>
+#include <mockturtle/views/topo_view.hpp>
 
 #include <experiments.hpp>
 
@@ -143,64 +145,69 @@ int main()
 		std::cout << "[i] processing " << benchmark << std::endl;
 
 		mockturtle::cut_rewriting_params ps_cut_rew;
-		ps_cut_rew.cut_enumeration_ps.cut_size = 6u;
+		ps_cut_rew.cut_enumeration_ps.cut_size = 4u;
 		ps_cut_rew.cut_enumeration_ps.cut_limit = 12u;
-		ps_cut_rew.verbose = false;
-		ps_cut_rew.progress = false;
+		ps_cut_rew.verbose = true;
+		ps_cut_rew.progress = true;
 		ps_cut_rew.min_cand_cut_size = 2u;
 
-		/* xag optimization */
+		mockturtle::x1g_network x1g;
+		/* Obtain initial X1G from optimized XAGs                                  */
+		/* ( if there is no optimized XAGs available, but only optimization flow ) */
+    /*
+    using sig_x1g = typename mockturtle::x1g_network::signal;
 
-		/*
-		mockturtle::xag_network xag;
-		lorina::read_verilog( crypto_benchmark_path( benchmark ), mockturtle::verilog_reader( xag ) );
+    // derive signals in the targeted X1G from nodes in the original XAG
+    auto const read_result = lorina::read_verilog( benchmark_path( benchmark_type, benchmark ), mockturtle::verilog_reader( xag ) );
+		assert( read_result == lorina::return_code::success );
+    node_map<sig_x1g, mockturtle::xag_network> xag_node2x1g_sig( xag );
 
-		uint32_t num_and = 0u;
-		uint32_t num_and_bfr = 0u;
-		uint32_t num_and_aft = 0u;
+    // create const
+    xag_node2x1g_sig[xag.get_node( xag.get_constant( false ) )] = x1g.get_constant( false );
 
-		xag.foreach_gate( [&]( auto f ) {
-			if ( xag.is_and( f ) )
-			{
-				++num_and;
-			}
-		} );
-		num_and_bfr = num_and;
+    // create pis
+    xag.foreach_pi( [&]( auto n ) {
+      xag_node2x1g_sig[n] = x1g.create_pi();
+    } );
+    
+    // create OneHots and XOR-3s
+    mockturtle::topo_view xag_topo{xag};
+    xag_topo.foreach_node( [&]( auto n ) {
+      if ( xag.is_constant( n ) || xag.is_pi( n ) )
+        return;
+      std::vector<sig_x1g> children;
+      xag.foreach_fanin( n, [&]( auto const& f ) {
+        children.push_back( xag.is_complemented( f ) ? x1g.create_not( xag_node2x1g_sig[f] ) : xag_node2x1g_sig[f] );
+      } );
 
-		mockturtle::xag_minmc_resynthesis xag_resyn( "../experiments/db" );
-
-		uint32_t ite_cnt = 0u;
-		const clock_t begin_time = clock();
-		while ( num_and > num_and_aft )
-		{
-			num_and = num_and_aft;
-			num_and_aft = 0u;
-
-			mockturtle::cut_rewriting_with_compatibility_graph( xag, xag_resyn, ps_cut_rew, nullptr, ::detail::num_and<mockturtle::xag_network>() );
-			xag = mockturtle::cleanup_dangling( xag );
-
-			xag.foreach_gate( [&]( auto f ) {
-				if ( xag.is_and( f ) )
-				{
-					++num_and_aft;
-				}
-			} );
-		}
-
-		const auto cec = abc_cec_crypto( xag, benchmark );
-
-		float improve = ( ( num_and_bfr - num_and_aft ) / num_and_bfr ) * 100;
-
-		exp_res( benchmark, num_and_bfr, num_and_aft, improve, ite_cnt, ( float( clock() - begin_time ) / CLOCKS_PER_SEC ) / ite_cnt, cec );
-
-		*/	
-
-		/* function converting xag to xohg */
+      assert( children.size() == 2u );
+      if ( xag.is_and( n ) )
+      {
+        xag_node2x1g_sig[n] = x1g.create_and( children[0], children[1] );
+      }
+      else if ( xag.is_xor( n ) )
+      {
+        xag_node2x1g_sig[n] = x1g.create_xor( children[0], children[1] );
+      }
+      else
+      {
+        std::cerr << "Unknown gate type detected! \n";
+        abort();
+      }
+    } );
+    
+    // create pos
+    xag.foreach_po( [&]( auto const& f ) {
+      auto const o = xag.is_complemented( f ) ? x1g.create_not( xag_node2x1g_sig[f] ) : xag_node2x1g_sig[f];
+      x1g.create_po( o );
+    } );
+    */
 
 		/* xohg optimization */
-		//
+		
 
-		mockturtle::x1g_network x1g;
+		/* Obtain initial X1G by reading in benchmarks      */
+		/* ( if optimized XAGs are provided as benchmarks ) */
 		auto const read_result = lorina::read_verilog( benchmark_path( benchmark_type, benchmark ), mockturtle::verilog_reader( x1g ) );
 		assert( read_result == lorina::return_code::success );
 
@@ -214,45 +221,85 @@ int main()
 				++num_oh;
 			}
 		} );
+
+		if ( num_oh == 0 )
+		{
+			exp_res( benchmark, 0u, 0u, 0., 0u, 0., true );
+			continue;
+		}
 		num_oh_bfr = num_oh;
 		num_oh_aft = num_oh - 1u;
 
-		/* make the cache static? */
-		mockturtle::exact_xohg_resynthesis_minmc_params ps_xohg_resyn;
-		ps_xohg_resyn.print_stats = true;
-		ps_xohg_resyn.conflict_limit = 1000000u;
-		ps_xohg_resyn.cache = std::make_shared<mockturtle::exact_xohg_resynthesis_minmc_params::cache_map_t>();
-		ps_xohg_resyn.blacklist_cache = std::make_shared<mockturtle::exact_xohg_resynthesis_minmc_params::blacklist_cache_map_t>();
-
-		mockturtle::exact_xohg_resynthesis_minmc_stats* pst_xohg_resyn = nullptr;
-		bool use_db = ( ps_cut_rew.cut_enumeration_ps.cut_size == 5u ) ? false : true;
-
-		mockturtle::exact_xohg_resynthesis_minmc xohg_resyn( "../experiments/db", ps_xohg_resyn, pst_xohg_resyn, use_db );
-
+		clock_t begin_time;
 		uint32_t ite_cnt = 0u;
-		const clock_t begin_time = clock();
-		while ( num_oh > num_oh_aft )
+		if ( ps_cut_rew.cut_enumeration_ps.cut_size > 4u )
 		{
-			if ( ite_cnt > 0u )
+			mockturtle::exact_xohg_resynthesis_minmc_params ps_xohg_resyn;
+			ps_xohg_resyn.print_stats = true;
+			ps_xohg_resyn.conflict_limit = 1000000u;
+			ps_xohg_resyn.cache = std::make_shared<mockturtle::exact_xohg_resynthesis_minmc_params::cache_map_t>();
+			ps_xohg_resyn.blacklist_cache = std::make_shared<mockturtle::exact_xohg_resynthesis_minmc_params::blacklist_cache_map_t>();
+
+			mockturtle::exact_xohg_resynthesis_minmc_stats* pst_xohg_resyn = nullptr;
+			bool use_db = ( ps_cut_rew.cut_enumeration_ps.cut_size == 5u ) ? false : true;
+
+			mockturtle::exact_xohg_resynthesis_minmc xohg_resyn( "../experiments/db", ps_xohg_resyn, pst_xohg_resyn, use_db );
+
+			begin_time = clock();
+			while ( num_oh > num_oh_aft )
 			{
-				num_oh = num_oh_aft;
-			}
-			++ite_cnt;
-			num_oh_aft = 0u;
-
-			mockturtle::cut_rewriting_with_compatibility_graph( x1g, xohg_resyn, ps_cut_rew, nullptr, ::detail::num_oh<mockturtle::x1g_network>() );
-
-			x1g = mockturtle::cleanup_dangling( x1g );
-
-			x1g.foreach_gate( [&]( auto f ) {
-				if ( x1g.is_onehot( f ) )
+				if ( ite_cnt > 0u )
 				{
-					++num_oh_aft;
+					num_oh = num_oh_aft;
 				}
-			} );
+				++ite_cnt;
+				num_oh_aft = 0u;
+
+				mockturtle::cut_rewriting_with_compatibility_graph( x1g, xohg_resyn, ps_cut_rew, nullptr, ::detail::num_oh<mockturtle::x1g_network>() );
+
+				x1g = mockturtle::cleanup_dangling( x1g );
+
+				x1g.foreach_gate( [&]( auto f ) {
+					if ( x1g.is_onehot( f ) )
+					{
+						++num_oh_aft;
+					}
+				} );
+			}
+		}
+		else
+		{
+			mockturtle::x1g_npn_resynthesis<mockturtle::x1g_network> x1g_resyn;
+
+			begin_time = clock();
+			while ( num_oh > num_oh_aft )
+			{
+				if ( ite_cnt > 0u )
+				{
+					num_oh = num_oh_aft;
+				}
+				++ite_cnt;
+				num_oh_aft = 0u;
+
+
+				//mockturtle::cut_rewriting( x1g, x1g_resyn, ps_cut_rew, nullptr );
+
+
+				mockturtle::cut_rewriting_with_compatibility_graph( x1g, x1g_resyn, ps_cut_rew, nullptr, ::detail::num_oh<mockturtle::x1g_network>() );
+
+				x1g = mockturtle::cleanup_dangling( x1g );
+
+				x1g.foreach_gate( [&]( auto f ) {
+					if ( x1g.is_onehot( f ) )
+					{
+						++num_oh_aft;
+					}
+				} );
+			}
 		}
 
 		const auto cec = abc_cec_crypto( x1g, benchmark_type, benchmark );
+		//assert( cec );
 
 		float improve = ( ( static_cast<float> ( num_oh_bfr ) - static_cast<float> ( num_oh_aft ) ) / static_cast<float> ( num_oh_bfr ) ) * 100;
 

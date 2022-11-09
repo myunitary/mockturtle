@@ -73,7 +73,7 @@ std::string benchmark_path( uint32_t benchmark_type, std::string const& benchmar
 	case 1u:
 		return fmt::format( "../experiments/crypto_benchmarks/{}.v", benchmark_name );
 	case 2u:
-		return fmt::format( "../experiments/mpc_benchmarks/{}.aig", benchmark_name );
+		return fmt::format( "../experiments/mpc_benchmarks/{}.v", benchmark_name );
 	default:
 		std::cout << "Unspecified type of benchmark. \n";
 		abort();
@@ -83,7 +83,7 @@ std::string benchmark_path( uint32_t benchmark_type, std::string const& benchmar
 void count_and_size_rec( merge_view & xag, mockturtle::xag_network::node const& f, mockturtle::xag_network::node const& root )
 {
 	if ( xag.value( f ) == 0u ) 
-	{	
+	{
 		xag.incr_value( f );
 
 		if ( xag.fanout( f ).size() == 1u )
@@ -94,7 +94,7 @@ void count_and_size_rec( merge_view & xag, mockturtle::xag_network::node const& 
 				xag.incr_value( root );
 			}
 
-			xag.foreach_fanin( f, [&]( auto const fi ) {
+			xag.foreach_fanin( f, [&]( auto const& fi ) {
 				auto const child = xag.get_node( fi );
 
 				if ( xag.is_and( child ) )
@@ -109,7 +109,7 @@ void count_and_size_rec( merge_view & xag, mockturtle::xag_network::node const& 
 int main()
 {
 	experiments::experiment<std::string, uint32_t, uint32_t, uint32_t, uint32_t, float, uint32_t, float> exp_res( "garble_xag", "benchmark", "num_and_before", "num_and_after", "garble_cost_before", "garble_cost_after", "improvement %", "maximum fanin size", "avg. runtime [s]" );
-	uint32_t benchmark_type = 2u; /* 0u - epfl benchmark; 1u - crypto benchmark; 2u - mpc benchmark */
+	uint32_t benchmark_type = 0u; /* 0u - epfl benchmark; 1u - crypto benchmark; 2u - mpc benchmark */
 	std::vector<std::string> benchmarks;
 	switch( benchmark_type )
 	{
@@ -163,17 +163,17 @@ int main()
 		garble_cost_bfr = num_and_bfr * 2;
 
 		const clock_t begin_time = clock();
-		merge_view xag_topo{xag};
-		xag_topo.clear_values();
+		merge_view xag_merge{xag};
+		xag_merge.clear_values();
 
-		xag_topo.foreach_gate( [&]( auto f ) {
-			if ( xag_topo.is_and( f ) && xag_topo.value( f ) == 0u )
+		xag_merge.foreach_gate_reverse( [&]( auto const& f ) {
+			if ( xag_merge.is_and( f ) && xag_merge.value( f ) == 0u )
 			{
 				// this is the root node of a potentially larger AND
 				++num_and_aft;
 				uint32_t garble_cost_aft_each = 2u;
-				count_and_size_rec( xag_topo, f, f );
-				garble_cost_aft_each += xag_topo.value( f );
+				count_and_size_rec( xag_merge, f, f );
+				garble_cost_aft_each += xag_merge.value( f );
 				garble_cost_aft += garble_cost_aft_each - 1u;
 
 				//and_size.emplace_back( garble_cost_aft_each );
@@ -183,6 +183,8 @@ int main()
 				}
 			}
 		} );
+
+		xag_merge.clear_values();
 
 		float improve = ( ( static_cast<float> ( garble_cost_bfr ) - static_cast<float> ( garble_cost_aft ) ) / static_cast<float> ( garble_cost_bfr ) ) * 100;
 
