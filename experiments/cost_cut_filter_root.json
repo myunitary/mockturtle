@@ -1,0 +1,115 @@
+[
+  {
+    "entries": [
+      {
+        "T-count_after": 512,
+        "T-count_before": 512,
+        "avg. runtime [s]": 0.22481399774551392,
+        "benchmark": "adder",
+        "equivalent": true,
+        "improvement %": 0.0,
+        "iterations": 1
+      },
+      {
+        "T-count_after": 3328,
+        "T-count_before": 3328,
+        "avg. runtime [s]": 5.232789993286133,
+        "benchmark": "bar",
+        "equivalent": true,
+        "improvement %": 0.0,
+        "iterations": 1
+      },
+      {
+        "T-count_after": 3406,
+        "T-count_before": 3406,
+        "avg. runtime [s]": 5.607830047607422,
+        "benchmark": "max",
+        "equivalent": true,
+        "improvement %": 0.0,
+        "iterations": 1
+      },
+      {
+        "T-count_after": 7682,
+        "T-count_before": 7642,
+        "avg. runtime [s]": 55.96348190307617,
+        "benchmark": "sin",
+        "equivalent": true,
+        "improvement %": -0.5234231948852539,
+        "iterations": 1
+      },
+      {
+        "T-count_after": 4608,
+        "T-count_before": 4608,
+        "avg. runtime [s]": 30.291135787963867,
+        "benchmark": "arbiter",
+        "equivalent": true,
+        "improvement %": 0.0,
+        "iterations": 1
+      },
+      {
+        "T-count_after": 1468,
+        "T-count_before": 1444,
+        "avg. runtime [s]": 3.88413405418396,
+        "benchmark": "cavlc",
+        "equivalent": true,
+        "improvement %": -1.6620497703552246,
+        "iterations": 1
+      },
+      {
+        "T-count_after": 172,
+        "T-count_before": 172,
+        "avg. runtime [s]": 0.2888309955596924,
+        "benchmark": "ctrl",
+        "equivalent": true,
+        "improvement %": 0.0,
+        "iterations": 1
+      },
+      {
+        "T-count_after": 1312,
+        "T-count_before": 1312,
+        "avg. runtime [s]": 4.58310604095459,
+        "benchmark": "dec",
+        "equivalent": true,
+        "improvement %": 0.0,
+        "iterations": 1
+      },
+      {
+        "T-count_after": 2134,
+        "T-count_before": 2118,
+        "avg. runtime [s]": 6.074129104614258,
+        "benchmark": "i2c",
+        "equivalent": true,
+        "improvement %": -0.7554296255111694,
+        "iterations": 1
+      },
+      {
+        "T-count_after": 322,
+        "T-count_before": 314,
+        "avg. runtime [s]": 0.8979309797286987,
+        "benchmark": "int2float",
+        "equivalent": true,
+        "improvement %": -2.5477707386016846,
+        "iterations": 1
+      },
+      {
+        "T-count_after": 1238,
+        "T-count_before": 1238,
+        "avg. runtime [s]": 3.347891092300415,
+        "benchmark": "priority",
+        "equivalent": true,
+        "improvement %": 0.0,
+        "iterations": 1
+      },
+      {
+        "T-count_after": 312,
+        "T-count_before": 312,
+        "avg. runtime [s]": 1.1116629838943481,
+        "benchmark": "router",
+        "equivalent": true,
+        "improvement %": 0.0,
+        "iterations": 1
+      }
+    ],
+    "version": "05dbea8"
+  }
+]
