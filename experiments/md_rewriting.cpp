@@ -64,7 +64,7 @@ bool abc_cec( Ntk const& ntk, std::string const& benchmark )
 
 int main()
 {
-	std::string json_name = "xag_low_md";
+	std::string json_name = "xag_low_md_no_gain_move_off";
 	experiments::experiment<std::string, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, float, float, uint32_t, float, bool> exp_res( json_name, "benchmark", "MC before", "MC after", "MD before", "MD after", "MD best", "improvement % (local)", "improvement % (global)", "iterations", "runtime [s]", "equivalent" );
 	auto const benchmarks = epfl_benchmarks();
 	std::vector<uint32_t> const best_scores  = epfl_tcad22();

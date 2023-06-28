@@ -115,7 +115,7 @@ public:
   	uint32_t md_before = ntk_md_.depth();
   	uint32_t md_after{ 0u };
   	uint32_t num_no_gain_move{ 0u };
-  	uint32_t no_gain_move_upper{ 5u };
+  	uint32_t no_gain_move_upper{ 0u };
   	allow_no_gain_move_ = true;
 
   	while ( md_after < md_before || allow_no_gain_move_ )
@@ -357,7 +357,7 @@ private:
 				{
 					const auto v1 = log2( op._var1 );
 					const auto v2 = log2( op._var2 );
-					delay[v1] = std::max( delay[v1], delay[v2] );
+					delay[v2] = std::max( delay[v1], delay[v2] );
 					break;
 				}
 				}
