@@ -1,0 +1,25 @@
+[
+  {
+    "entries": [
+      {
+        "found": false,
+        "function": "2ec0ae40",
+        "mc_after": 4,
+        "mc_before": 4,
+        "md_after": 2,
+        "md_before": 2,
+        "runtime[s]": 19.501371383666992
+      },
+      {
+        "found": false,
+        "function": "6248eac0",
+        "mc_after": 4,
+        "mc_before": 4,
+        "md_after": 2,
+        "md_before": 2,
+        "runtime[s]": 20.468297958374023
+      }
+    ],
+    "version": "a2ed0d4"
+  }
+]

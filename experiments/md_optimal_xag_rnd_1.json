@@ -1,0 +1,439 @@
+[
+  {
+    "entries": [
+      {
+        "found": true,
+        "function": "00000000",
+        "mc_after": 0,
+        "mc_before": 0,
+        "md_after": 0,
+        "md_before": 0,
+        "runtime[s]": 0.0
+      },
+      {
+        "found": false,
+        "function": "80000000",
+        "mc_after": 4,
+        "mc_before": 4,
+        "md_after": 3,
+        "md_before": 3,
+        "runtime[s]": 326.3296203613281
+      },
+      {
+        "found": false,
+        "function": "80008000",
+        "mc_after": 3,
+        "mc_before": 3,
+        "md_after": 2,
+        "md_before": 2,
+        "runtime[s]": 11.344710350036621
+      },
+      {
+        "found": true,
+        "function": "00808080",
+        "mc_after": 4,
+        "mc_before": 4,
+        "md_after": 3,
+        "md_before": 4,
+        "runtime[s]": 13.830989837646484
+      },
+      {
+        "found": false,
+        "function": "80808080",
+        "mc_after": 2,
+        "mc_before": 2,
+        "md_after": 2,
+        "md_before": 2,
+        "runtime[s]": 1.3435570001602173
+      },
+      {
+        "found": false,
+        "function": "08888000",
+        "mc_after": 3,
+        "mc_before": 3,
+        "md_after": 2,
+        "md_before": 2,
+        "runtime[s]": 9.122214317321777
+      },
+      {
+        "found": true,
+        "function": "aa2a2a80",
+        "mc_after": 4,
+        "mc_before": 4,
+        "md_after": 3,
+        "md_before": 4,
+        "runtime[s]": 15.064393043518066
+      },
+      {
+        "found": true,
+        "function": "88080808",
+        "mc_after": 4,
+        "mc_before": 4,
+        "md_after": 3,
+        "md_before": 4,
+        "runtime[s]": 13.779109954833984
+      },
+      {
+        "found": false,
+        "function": "2888a000",
+        "mc_after": 3,
+        "mc_before": 3,
+        "md_after": 2,
+        "md_before": 2,
+        "runtime[s]": 6.105646133422852
+      },
+      {
+        "found": false,
+        "function": "f7788000",
+        "mc_after": 3,
+        "mc_before": 3,
+        "md_after": 2,
+        "md_before": 2,
+        "runtime[s]": 8.381908416748047
+      },
+      {
+        "found": true,
+        "function": "a8202020",
+        "mc_after": 4,
+        "mc_before": 3,
+        "md_after": 2,
+        "md_before": 3,
+        "runtime[s]": 37.87993621826172
+      },
+      {
+        "found": true,
+        "function": "08880888",
+        "mc_after": 3,
+        "mc_before": 3,
+        "md_after": 2,
+        "md_before": 3,
+        "runtime[s]": 7.931733131408691
+      },
+      {
+        "found": false,
+        "function": "bd686868",
+        "mc_after": 4,
+        "mc_before": 4,
+        "md_after": 3,
+        "md_before": 3,
+        "runtime[s]": 325.30364990234375
+      },
+      {
+        "found": false,
+        "function": "aa808080",
+        "mc_after": 4,
+        "mc_before": 4,
+        "md_after": 3,
+        "md_before": 3,
+        "runtime[s]": 336.0893859863281
+      },
+      {
+        "found": false,
+        "function": "7e686868",
+        "mc_after": 4,
+        "mc_before": 4,
+        "md_after": 3,
+        "md_before": 3,
+        "runtime[s]": 335.6522216796875
+      },
+      {
+        "found": true,
+        "function": "2208a208",
+        "mc_after": 4,
+        "mc_before": 4,
+        "md_after": 3,
+        "md_before": 4,
+        "runtime[s]": 14.004379272460938
+      },
+      {
+        "found": true,
+        "function": "08888888",
+        "mc_after": 4,
+        "mc_before": 4,
+        "md_after": 3,
+        "md_before": 4,
+        "runtime[s]": 20.792451858520508
+      },
+      {
+        "found": true,
+        "function": "88888888",
+        "mc_after": 1,
+        "mc_before": 1,
+        "md_after": 1,
+        "md_before": 1,
+        "runtime[s]": 0.0
+      },
+      {
+        "found": false,
+        "function": "ea404040",
+        "mc_after": 3,
+        "mc_before": 3,
+        "md_after": 2,
+        "md_before": 2,
+        "runtime[s]": 5.7400970458984375
+      },
+      {
+        "found": false,
+        "function": "2a802a80",
+        "mc_after": 2,
+        "mc_before": 2,
+        "md_after": 2,
+        "md_before": 2,
+        "runtime[s]": 1.2743910551071167
+      },
+      {
+        "found": true,
+        "function": "73d28c88",
+        "mc_after": 4,
+        "mc_before": 3,
+        "md_after": 2,
+        "md_before": 3,
+        "runtime[s]": 38.52190399169922
+      },
+      {
+        "found": false,
+        "function": "ea808080",
+        "mc_after": 3,
+        "mc_before": 3,
+        "md_after": 2,
+        "md_before": 2,
+        "runtime[s]": 7.456589221954346
+      },
+      {
+        "found": true,
+        "function": "a28280a0",
+        "mc_after": 4,
+        "mc_before": 3,
+        "md_after": 2,
+        "md_before": 3,
+        "runtime[s]": 35.897857666015625
+      },
+      {
+        "found": true,
+        "function": "13284c88",
+        "mc_after": 3,
+        "mc_before": 3,
+        "md_after": 2,
+        "md_before": 3,
+        "runtime[s]": 9.0231351852417
+      },
+      {
+        "found": true,
+        "function": "a2220888",
+        "mc_after": 4,
+        "mc_before": 3,
+        "md_after": 2,
+        "md_before": 3,
+        "runtime[s]": 31.77193260192871
+      },
+      {
+        "found": true,
+        "function": "aae6da80",
+        "mc_after": 4,
+        "mc_before": 4,
+        "md_after": 3,
+        "md_before": 4,
+        "runtime[s]": 15.167641639709473
+      },
+      {
+        "found": false,
+        "function": "58d87888",
+        "mc_after": 4,
+        "mc_before": 4,
+        "md_after": 3,
+        "md_before": 3,
+        "runtime[s]": 330.38787841796875
+      },
+      {
+        "found": false,
+        "function": "8c88ac28",
+        "mc_after": 4,
+        "mc_before": 4,
+        "md_after": 3,
+        "md_before": 3,
+        "runtime[s]": 337.45654296875
+      },
+      {
+        "found": true,
+        "function": "8880f880",
+        "mc_after": 4,
+        "mc_before": 4,
+        "md_after": 3,
+        "md_before": 4,
+        "runtime[s]": 16.025341033935547
+      },
+      {
+        "found": false,
+        "function": "9ee8e888",
+        "mc_after": 4,
+        "mc_before": 4,
+        "md_after": 3,
+        "md_before": 3,
+        "runtime[s]": 328.8922119140625
+      },
+      {
+        "found": true,
+        "function": "4268c268",
+        "mc_after": 4,
+        "mc_before": 4,
+        "md_after": 3,
+        "md_before": 4,
+        "runtime[s]": 14.12761116027832
+      },
+      {
+        "found": false,
+        "function": "16704c80",
+        "mc_after": 4,
+        "mc_before": 4,
+        "md_after": 2,
+        "md_before": 2,
+        "runtime[s]": 20.715991973876953
+      },
+      {
+        "found": false,
+        "function": "78888888",
+        "mc_after": 3,
+        "mc_before": 3,
+        "md_after": 2,
+        "md_before": 2,
+        "runtime[s]": 8.786882400512695
+      },
+      {
+        "found": false,
+        "function": "4966bac0",
+        "mc_after": 4,
+        "mc_before": 4,
+        "md_after": 2,
+        "md_before": 2,
+        "runtime[s]": 15.71870231628418
+      },
+      {
+        "found": true,
+        "function": "372840a0",
+        "mc_after": 4,
+        "mc_before": 4,
+        "md_after": 2,
+        "md_before": 3,
+        "runtime[s]": 5.839152812957764
+      },
+      {
+        "found": true,
+        "function": "5208d288",
+        "mc_after": 4,
+        "mc_before": 3,
+        "md_after": 2,
+        "md_before": 3,
+        "runtime[s]": 38.551979064941406
+      },
+      {
+        "found": true,
+        "function": "7ca00428",
+        "mc_after": 4,
+        "mc_before": 4,
+        "md_after": 2,
+        "md_before": 3,
+        "runtime[s]": 5.236291885375977
+      },
+      {
+        "found": true,
+        "function": "f8880888",
+        "mc_after": 3,
+        "mc_before": 3,
+        "md_after": 2,
+        "md_before": 3,
+        "runtime[s]": 8.50255298614502
+      },
+      {
+        "found": true,
+        "function": "2ec0ae40",
+        "mc_after": 4,
+        "mc_before": 4,
+        "md_after": 3,
+        "md_before": 4,
+        "runtime[s]": 0.2832629978656769
+      },
+      {
+        "found": false,
+        "function": "f888f888",
+        "mc_after": 3,
+        "mc_before": 3,
+        "md_after": 2,
+        "md_before": 2,
+        "runtime[s]": 7.881822109222412
+      },
+      {
+        "found": true,
+        "function": "58362ec0",
+        "mc_after": 4,
+        "mc_before": 4,
+        "md_after": 3,
+        "md_before": 4,
+        "runtime[s]": 15.443175315856934
+      },
+      {
+        "found": false,
+        "function": "0eb8f6c0",
+        "mc_after": 4,
+        "mc_before": 4,
+        "md_after": 3,
+        "md_before": 3,
+        "runtime[s]": 325.5207214355469
+      },
+      {
+        "found": true,
+        "function": "567cea40",
+        "mc_after": 4,
+        "mc_before": 4,
+        "md_after": 3,
+        "md_before": 4,
+        "runtime[s]": 14.626988410949707
+      },
+      {
+        "found": false,
+        "function": "f8887888",
+        "mc_after": 4,
+        "mc_before": 4,
+        "md_after": 3,
+        "md_before": 3,
+        "runtime[s]": 317.4642333984375
+      },
+      {
+        "found": true,
+        "function": "78887888",
+        "mc_after": 2,
+        "mc_before": 2,
+        "md_after": 1,
+        "md_before": 1,
+        "runtime[s]": 0.0
+      },
+      {
+        "found": false,
+        "function": "e72890a0",
+        "mc_after": 4,
+        "mc_before": 4,
+        "md_after": 2,
+        "md_before": 2,
+        "runtime[s]": 19.38227653503418
+      },
+      {
+        "found": false,
+        "function": "268cea40",
+        "mc_after": 3,
+        "mc_before": 3,
+        "md_after": 2,
+        "md_before": 2,
+        "runtime[s]": 9.413081169128418
+      },
+      {
+        "found": true,
+        "function": "6248eac0",
+        "mc_after": 4,
+        "mc_before": 4,
+        "md_after": 3,
+        "md_before": 4,
+        "runtime[s]": 0.05496000126004219
+      }
+    ],
+    "version": "a2ed0d4"
+  }
+]
