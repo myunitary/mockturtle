@@ -2,17 +2,17 @@
   {
     "entries": [
       {
-        "MC after": 129,
+        "MC after": 133,
         "MC before": 128,
         "MD after": 128,
         "MD before": 128,
         "MD best": 12,
         "benchmark": "adder",
         "equivalent": true,
-        "improvement % (global)": -431.5948486328125,
-        "improvement % (local)": -0.78125,
+        "improvement % (global)": -448.0783996582031,
+        "improvement % (local)": -3.90625,
         "iterations": 0,
-        "runtime [s]": 0.0017040000529959798
+        "runtime [s]": 0.01600099913775921
       },
       {
         "MC after": 832,
@@ -25,33 +25,33 @@
         "improvement % (global)": -95.5487289428711,
         "improvement % (local)": 0.0,
         "iterations": 0,
-        "runtime [s]": 0.03214799985289574
+        "runtime [s]": 0.38637199997901917
       },
       {
-        "MC after": 5201,
+        "MC after": 5205,
         "MC before": 5131,
         "MD after": 2201,
         "MD before": 2239,
         "MD best": 523,
         "benchmark": "div",
         "equivalent": true,
-        "improvement % (global)": -30.6423282623291,
-        "improvement % (local)": 12.397783279418945,
+        "improvement % (global)": -31.32268714904785,
+        "improvement % (local)": 11.941568374633789,
         "iterations": 0,
-        "runtime [s]": 1.129480004310608
+        "runtime [s]": 1.4438179731369019
       },
       {
-        "MC after": 8774,
+        "MC after": 8780,
         "MC before": 8773,
         "MD after": 193,
         "MD before": 193,
         "MD best": 104,
         "benchmark": "log2",
         "equivalent": true,
-        "improvement % (global)": 11.473946571350098,
-        "improvement % (local)": -0.01139830332249403,
+        "improvement % (global)": 11.413411140441895,
+        "improvement % (local)": -0.07978811860084534,
         "iterations": 0,
-        "runtime [s]": 0.054614000022411346
+        "runtime [s]": 0.6658449769020081
       },
       {
         "MC after": 872,
@@ -64,98 +64,98 @@
         "improvement % (global)": -968.5677490234375,
         "improvement % (local)": 0.0,
         "iterations": 0,
-        "runtime [s]": 0.001567999948747456
+        "runtime [s]": 0.008665000088512897
       },
       {
-        "MC after": 7591,
+        "MC after": 7609,
         "MC before": 7585,
-        "MD after": 147,
+        "MD after": 149,
         "MD before": 148,
         "MD best": 65,
         "benchmark": "multiplier",
         "equivalent": true,
-        "improvement % (global)": -156.4711151123047,
-        "improvement % (local)": 1.2687472105026245,
+        "improvement % (global)": -164.12220764160156,
+        "improvement % (local)": -1.676620364189148,
         "iterations": 0,
-        "runtime [s]": 0.03910199925303459
+        "runtime [s]": 0.14109300076961517
       },
       {
-        "MC after": 1973,
+        "MC after": 1979,
         "MC before": 1959,
-        "MD after": 93,
+        "MD after": 92,
         "MD before": 99,
         "MD best": 62,
         "benchmark": "sin",
         "equivalent": true,
-        "improvement % (global)": 34.92744445800781,
-        "improvement % (local)": 11.123261451721191,
+        "improvement % (global)": 36.12567138671875,
+        "improvement % (local)": 12.759810447692871,
         "iterations": 0,
-        "runtime [s]": 0.25641000270843506
+        "runtime [s]": 0.5930359959602356
       },
       {
-        "MC after": 5218,
+        "MC after": 5220,
         "MC before": 5217,
         "MD after": 2138,
         "MD before": 2138,
         "MD best": 951,
         "benchmark": "sqrt",
         "equivalent": true,
-        "improvement % (global)": -645.4630126953125,
-        "improvement % (local)": -0.19268794357776642,
+        "improvement % (global)": -648.3302001953125,
+        "improvement % (local)": -0.5780529975891113,
         "iterations": 0,
-        "runtime [s]": 0.11917000263929367
+        "runtime [s]": 0.6979320049285889
       },
       {
-        "MC after": 4596,
+        "MC after": 4598,
         "MC before": 4596,
         "MD after": 154,
         "MD before": 154,
         "MD best": 20,
         "benchmark": "square",
         "equivalent": true,
-        "improvement % (global)": -2428.503662109375,
-        "improvement % (local)": 0.0,
+        "improvement % (global)": -2429.60400390625,
+        "improvement % (local)": -0.04351609945297241,
         "iterations": 0,
-        "runtime [s]": 0.21301999688148499
+        "runtime [s]": 0.704459011554718
       },
       {
-        "MC after": 1175,
+        "MC after": 1187,
         "MC before": 1174,
-        "MD after": 50,
+        "MD after": 47,
         "MD before": 50,
         "MD best": 10,
         "benchmark": "arbiter",
         "equivalent": true,
-        "improvement % (global)": -466.7567138671875,
-        "improvement % (local)": -0.08517887443304062,
+        "improvement % (global)": -405.900634765625,
+        "improvement % (local)": 10.661566734313965,
         "iterations": 0,
-        "runtime [s]": 0.05288400128483772
+        "runtime [s]": 1.175281047821045
       },
       {
-        "MC after": 394,
+        "MC after": 399,
         "MC before": 394,
-        "MD after": 11,
+        "MD after": 13,
         "MD before": 11,
         "MD best": 7,
         "benchmark": "cavlc",
         "equivalent": true,
-        "improvement % (global)": -117.65967559814453,
-        "improvement % (local)": 0.0,
+        "improvement % (global)": -207.86195373535156,
+        "improvement % (local)": -41.44187545776367,
         "iterations": 0,
-        "runtime [s]": 0.008523999713361263
+        "runtime [s]": 0.6012679934501648
       },
       {
-        "MC after": 45,
+        "MC after": 48,
         "MC before": 45,
-        "MD after": 5,
+        "MD after": 6,
         "MD before": 5,
         "MD best": 4,
         "benchmark": "ctrl",
         "equivalent": true,
-        "improvement % (global)": -30.20833396911621,
-        "improvement % (local)": 0.0,
+        "improvement % (global)": -100.0,
+        "improvement % (local)": -53.60000228881836,
         "iterations": 0,
-        "runtime [s]": 0.1817529946565628
+        "runtime [s]": 1.2139569520950317
       },
       {
         "MC after": 329,
@@ -168,46 +168,46 @@
         "improvement % (global)": -100.30441284179688,
         "improvement % (local)": -78.31977844238281,
         "iterations": 0,
-        "runtime [s]": 0.06917399913072586
+        "runtime [s]": 0.46189001202583313
       },
       {
-        "MC after": 558,
+        "MC after": 563,
         "MC before": 557,
-        "MD after": 11,
+        "MD after": 10,
         "MD before": 11,
         "MD best": 7,
         "benchmark": "i2c",
         "equivalent": true,
-        "improvement % (global)": -68.862548828125,
-        "improvement % (local)": -0.1795332133769989,
+        "improvement % (global)": -40.80632400512695,
+        "improvement % (local)": 16.465124130249023,
         "iterations": 0,
-        "runtime [s]": 0.03170299902558327
+        "runtime [s]": 0.6594240069389343
       },
       {
-        "MC after": 86,
+        "MC after": 88,
         "MC before": 85,
-        "MD after": 10,
+        "MD after": 11,
         "MD before": 11,
         "MD best": 6,
         "benchmark": "int2float",
         "equivalent": true,
-        "improvement % (global)": -129.7008514404297,
-        "improvement % (local)": 16.383081436157227,
+        "improvement % (global)": -184.40171813964844,
+        "improvement % (local)": -3.529412031173706,
         "iterations": 0,
-        "runtime [s]": 0.15051600337028503
+        "runtime [s]": 0.32055801153182983
       },
       {
-        "MC after": 4696,
+        "MC after": 4707,
         "MC before": 4695,
-        "MD after": 38,
+        "MD after": 36,
         "MD before": 39,
         "MD best": 14,
         "benchmark": "mem_ctrl",
         "equivalent": true,
-        "improvement % (global)": -246.5597686767578,
-        "improvement % (local)": 5.042237758636475,
+        "improvement % (global)": -211.76837158203125,
+        "improvement % (local)": 14.575118064880371,
         "iterations": 0,
-        "runtime [s]": 0.16303899884223938
+        "runtime [s]": 0.928309977054596
       },
       {
         "MC after": 323,
@@ -220,33 +220,33 @@
         "improvement % (global)": -5484.43505859375,
         "improvement % (local)": 0.0,
         "iterations": 0,
-        "runtime [s]": 0.03773599863052368
+        "runtime [s]": 0.10686299949884415
       },
       {
-        "MC after": 93,
+        "MC after": 96,
         "MC before": 93,
         "MD after": 12,
         "MD before": 13,
         "MD best": 8,
         "benchmark": "router",
         "equivalent": true,
-        "improvement % (global)": -80.38793182373047,
-        "improvement % (local)": 14.792900085449219,
+        "improvement % (global)": -86.20689392089844,
+        "improvement % (local)": 12.044282913208008,
         "iterations": 0,
-        "runtime [s]": 0.22159799933433533
+        "runtime [s]": 1.1079930067062378
       },
       {
-        "MC after": 4257,
+        "MC after": 4260,
         "MC before": 4257,
-        "MD after": 40,
+        "MD after": 39,
         "MD before": 40,
         "MD best": 17,
         "benchmark": "voter",
         "equivalent": true,
-        "improvement % (global)": -624.0603637695313,
-        "improvement % (local)": 0.0,
+        "improvement % (global)": -588.7949829101563,
+        "improvement % (local)": 4.870507717132568,
         "iterations": 0,
-        "runtime [s]": 0.040017999708652496
+        "runtime [s]": 0.27883899211883545
       }
     ],
     "version": "6d94c06"

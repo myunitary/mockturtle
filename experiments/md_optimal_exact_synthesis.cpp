@@ -362,13 +362,13 @@ void analyze_mc_optimal_xags()
 
 void md_optimal_exact_synthesis()
 {
-	experiments::experiment<std::string, uint32_t, uint32_t, uint32_t, uint32_t, float, bool> exp_res( "md_optimal_xag", "function", "mc_before", "mc_after", "md_before", "md_after", "runtime[s]", "found" );
+	experiments::experiment<std::string, uint32_t, uint32_t, uint32_t, uint32_t, float, bool> exp_res( "md_optimal_xag_test", "function", "mc_before", "mc_after", "md_before", "md_after", "runtime[s]", "found" );
 
 	uint32_t cases_impr{ 0u };
 
-	//for ( auto const& benchmark: affine_representatives_5 )
+	for ( auto const& benchmark: affine_representatives_5 )
 	//for ( auto const& benchmark: affine_representatives_5_updated )
-	for ( auto const& benchmark: affine_representatives_5_updated_updated )
+	//for ( auto const& benchmark: affine_representatives_5_updated_updated )
 	{
 		std::cout << "[i] processing " << benchmark.func << "\n";
 		if ( benchmark.func == "00000000" )
@@ -399,10 +399,12 @@ void md_optimal_exact_synthesis()
 			{
 				continue;
 			}
-			if ( ladder.md < ( md - 1u ) )
-			{
-				break;
-			}
+			// if ( ladder.md < ( md - 1u ) )
+			// {
+			// 	/* if there is an XAG with an MD of md             */
+			// 	/* there shall be also one with the MD of (md + 1) */
+			// 	break;
+			// }
 			uint32_t mc_upper = mc * md * md / ( ladder.md * ladder.md );
 			if ( ( mc_upper * ladder.md * ladder.md ) == ( mc * md * md ) )
 			{
@@ -436,9 +438,9 @@ void md_optimal_exact_synthesis()
 	}
 	exp_res.save();
 	exp_res.table();
-	//std::cout << "Among 48 functions, better implementations are found for " << cases_impr << " of them.\n";
+	std::cout << "Among 48 functions, better implementations are found for " << cases_impr << " of them.\n";
 	//std::cout << "Among 22 functions, better implementations are found for " << cases_impr << " of them.\n";
-	std::cout << "Among 2 functions, better implementations are found for " << cases_impr << " of them.\n";
+	//std::cout << "Among 2 functions, better implementations are found for " << cases_impr << " of them.\n";
 }
 
 template<class Ntk, class NodeCostFn>
@@ -640,8 +642,8 @@ int main ()
 {
 	//profile_mc_optimal_xags( "../experiments/db_mc_5" );
 	//analyze_mc_optimal_xags();
-	//md_optimal_exact_synthesis();
-	md_optimal_exact_synthesis_gendb( "../experiments/db_mc_5" );
+	md_optimal_exact_synthesis();
+	//md_optimal_exact_synthesis_gendb( "../experiments/db_mc_5" );
 
 	return 0;
 

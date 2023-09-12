@@ -85,6 +85,8 @@ struct xag_algebraic_depth_rewriting_params
 
   /*! \brief Try rules that are rarely applied. */
   bool allow_rare_rules{ false };
+
+  bool md_optimization{ false };
 };
 
 namespace detail
@@ -125,7 +127,11 @@ private:
       topo_view topo{ ntk, po };
       topo.foreach_node( [&]( auto n ) {
         bool res = reduce_depth_and_associativity( n );
-        res |= reduce_depth_xor_associativity( n );
+        
+        if ( !ps.md_optimization )
+        {
+          res |= reduce_depth_xor_associativity( n );
+        }
 
         if ( ps.allow_area_increase && !res )
         {

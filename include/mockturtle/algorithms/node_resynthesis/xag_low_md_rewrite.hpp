@@ -19,18 +19,19 @@
 #include <mockturtle/networks/xag.hpp>
 #include <mockturtle/utils/stopwatch.hpp>
 #include <mockturtle/views/cut_view.hpp>
+#include <mockturtle/views/fanout_view.hpp>
 
 namespace mockturtle
 {
 
-struct xag_low_tcount_rewrite_params
+struct xag_low_md_rewrite_params
 {
 	bool verbose{ false };
 	bool verify_database{ false };
 	uint32_t exhaustive_dc_limit{ 10u };
 };
 
-struct xag_low_tcount_rewrite_stats
+struct xag_low_md_rewrite_stats
 {
 	stopwatch<>::duration time_total{ 0 };
 	stopwatch<>::duration time_parse_db{ 0 };
@@ -56,20 +57,20 @@ struct xag_low_tcount_rewrite_stats
 	}
 };
 
-class xag_low_tcount_rewrite
+class xag_low_md_rewrite
 {
 public:
-	xag_low_tcount_rewrite( std::string const& dbname, xag_low_tcount_rewrite_params const& ps = {}, 
-													xag_low_tcount_rewrite_stats* pst = nullptr )
+	xag_low_md_rewrite( std::string const& dbname, xag_low_md_rewrite_params const& ps = {}, 
+											xag_low_md_rewrite_stats* pst = nullptr )
 		: ps_( ps ),
 			pst_( pst ),
-			pfunc_tcount_( std::make_shared<decltype( pfunc_tcount_ )::element_type>() ),
+			pfunc_md_( std::make_shared<decltype( pfunc_md_ )::element_type>() ),
       pclassify_cache_( std::make_shared<decltype( pclassify_cache_ )::element_type>() )
 	{
 		build_db( dbname );
 	}
 
-	virtual ~xag_low_tcount_rewrite()
+	virtual ~xag_low_md_rewrite()
 	{
 		if ( ps_.verbose )
 		{
@@ -126,16 +127,17 @@ public:
 		}
 	}
 
-	template<typename LeavesIterator, typename Fn>
-	void operator()( xag_network& xag, kitty::dynamic_truth_table const& func,
-									 LeavesIterator begin, LeavesIterator end, Fn&& fn ) const
+	template<class TT, typename LeavesIterator, typename Fn>
+	void operator()( xag_network& xag, TT const& func,
+									 LeavesIterator begin, LeavesIterator end, 
+									 Fn&& fn, bool rewrite = true ) const
 	{
 		stopwatch t_total( pst_->time_total );
 
 		const auto func_ext = kitty::extend_to<5u>( func );
 		std::vector<kitty::detail::spectral_operation> trans;
 		kitty::static_truth_table<5u> real_repr;
-		uint32_t tcount{ 0u };
+		uint32_t mc{ 0u };
 
 		const auto cache_it = pclassify_cache_->find( func_ext );
 		if ( cache_it != pclassify_cache_->end() )
@@ -175,12 +177,17 @@ public:
 			}
 		}
 
-		auto search = pfunc_tcount_->find( kitty::to_hex( real_repr ) );
+		auto search = pfunc_md_->find( kitty::to_hex( real_repr ) );
 		xag_network::signal po_db_repr;
-		if ( search != pfunc_tcount_->end() )
+		if ( search != pfunc_md_->end() )
 		{
 			std::string db_repr_str = std::get<0>( search->second );
-			tcount = std::get<1>( search->second );
+			mc = std::get<1>( search->second );
+			if ( !rewrite )
+			{
+				fn( xag.get_constant( false ), mc );
+				return;
+			}
 			po_db_repr = std::get<2>( search->second );
 
 			kitty::static_truth_table<5u> db_repr;
@@ -345,9 +352,9 @@ public:
 			po = xag.create_xor( po, po_xor );
 		}
 
-		//std::cout << "[m] cost of current cut is " << tcount << "\n";
-		//fn( ( po_inv ? !po : po ), tcount );
-		fn( po_inv ? !po : po );
+		//std::cout << "[m] cost of current cut is " << mc << "\n";
+		fn( ( po_inv ? !po : po ), mc );
+		//fn( po_inv ? !po : po );
 	}
 
 private:
@@ -378,10 +385,20 @@ private:
 			const uint32_t num_vars = std::stoul( line.substr( 0, pos++ ) );
 			line.erase( 0, pos );
 			pos = line.find( ' ' );
-			const uint32_t tcount = std::stoul( line.substr( 0, pos++ ) );
+			const uint32_t mc = std::stoul( line.substr( 0, pos++ ) );
 			line.erase( 0, pos );
+			pos = line.find( ' ' );
+			std::vector<uint32_t> delay;
+			uint32_t md{ 0u };
+			for ( auto i{ 0u }; i < num_vars; ++i )
+			{
+				pos = line.find( ' ' );
+				delay.emplace_back( std::stoul( line.substr( 0, pos++ ) ) );
+				line.erase( 0, pos );
+				md = ( delay.back() > md ) ? delay.back() : md;
+			}
 
-			std::vector<xag_network::signal> signals_tcount_opt( db_pis_.begin(), db_pis_.begin() + num_vars );
+			std::vector<xag_network::signal> signals_md_opt( db_pis_.begin(), db_pis_.begin() + num_vars );
 
 			while ( line.size() > 3 )
 			{
@@ -404,7 +421,7 @@ private:
 	    	}
 	    	else
 	    	{
-	    		signal1 = signals_tcount_opt[signal_1 / 2 - 1] ^ ( signal_1 % 2 != 0 );
+	    		signal1 = signals_md_opt[signal_1 / 2 - 1] ^ ( signal_1 % 2 != 0 );
 	    	}
 	    	if ( signal_2 == 0u )
 	    	{
@@ -416,21 +433,21 @@ private:
 	    	}
 	    	else
 	    	{
-	    		signal2 = signals_tcount_opt[signal_2 / 2 - 1] ^ ( signal_2 % 2 != 0 );
+	    		signal2 = signals_md_opt[signal_2 / 2 - 1] ^ ( signal_2 % 2 != 0 );
 	    	}
 
 	    	if ( signal_1 > signal_2 )
 	    	{
-	    		signals_tcount_opt.emplace_back( db_.create_xor( signal1, signal2 ) );
+	    		signals_md_opt.emplace_back( db_.create_xor( signal1, signal2 ) );
 	    	}
 	    	else
 	    	{
-	    		signals_tcount_opt.emplace_back( db_.create_and( signal1, signal2 ) );
+	    		signals_md_opt.emplace_back( db_.create_and( signal1, signal2 ) );
 	    	}
 			}
 
 			const uint32_t signal_po = std::stoul( line );
-			const xag_network::signal po = signals_tcount_opt[signal_po / 2 - 1] ^ ( signal_po % 2 != 0 );
+			const xag_network::signal po = signals_md_opt[signal_po / 2 - 1] ^ ( signal_po % 2 != 0 );
 			db_.create_po( po );
 
 			if ( ps_.verify_database )
@@ -450,13 +467,12 @@ private:
 					const auto repr_correct = kitty::exact_spectral_canonization( result );
 					if ( repr_correct != repr_real )
 					{
-						std::cerr << "[e] representative does not match\n";
 						abort();
 					}
 				}
 			}
 
-			pfunc_tcount_->insert( std::make_pair( repr_real_str, std::make_tuple( repr_db_str, tcount, po ) ) );
+			pfunc_md_->insert( std::make_pair( repr_real_str, std::make_tuple( repr_db_str, mc, po ) ) );
 		}
 		std::cout << "[i] load db finished\n";
 		std::cout << "[i] " << ( db_._storage )->nodes.size() << " nodes in the database XAG\n";
@@ -465,13 +481,13 @@ private:
 private:
 	xag_network db_;
 	std::vector<xag_network::signal> db_pis_;
-	std::shared_ptr<std::unordered_map<std::string, std::tuple<std::string, uint32_t, xag_network::signal>>> pfunc_tcount_;
+	std::shared_ptr<std::unordered_map<std::string, std::tuple<std::string, uint32_t, xag_network::signal>>> pfunc_md_;
 	std::shared_ptr<std::unordered_map<kitty::static_truth_table<5u>, std::tuple<bool, kitty::static_truth_table<5u>, std::vector<kitty::detail::spectral_operation>>, kitty::hash<kitty::static_truth_table<5u>>>> pclassify_cache_;
 	//std::shared_ptr<std::unordered_map<kitty::static_truth_table<5u>, std::tuple<kitty::static_truth_table<5u>, std::vector<kitty::detail::spectral_operation>>, kitty::hash<kitty::static_truth_table<5u>>>> pclassify_cache_;
 
-	xag_low_tcount_rewrite_params const& ps_;
-	//xag_low_tcount_rewrite_stats st_;
-	xag_low_tcount_rewrite_stats* pst_{ nullptr };
+	xag_low_md_rewrite_params const& ps_;
+	//xag_low_md_rewrite_stats st_;
+	xag_low_md_rewrite_stats* pst_{ nullptr };
 };
 
 } /* namespace mockturtle */

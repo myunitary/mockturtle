@@ -262,6 +262,127 @@ std::tuple<TT, uint32_t, std::vector<uint8_t>> exact_npn_canonization( const TT&
   return std::make_tuple( tmin, phase, perm );
 }
 
+/* an variant of Exact NPN Canonization that apply the given callback respectively to each visited NPN configuration */
+template<typename TT, typename Callback = decltype( detail::exact_npn_canonization_null_callback<TT> )>
+std::tuple<TT, uint32_t, std::vector<uint8_t>> exact_npn_canonization_callback_config( const TT& tt, Callback&& fn = detail::exact_npn_canonization_null_callback<TT> )
+{
+  static_assert( is_complete_truth_table<TT>::value, "Can only be applied on complete truth tables." );
+
+  const auto num_vars = tt.num_vars();
+
+  /* Special case for n = 0 */
+  if ( num_vars == 0 )
+  {
+    const auto bit = get_bit( tt, 0 );
+    return std::make_tuple( unary_not_if( tt, bit ), static_cast<uint32_t>( bit ), std::vector<uint8_t>{} );
+  }
+
+  /* Special case for n = 1 */
+  if ( num_vars == 1 )
+  {
+    const auto bit1 = get_bit( tt, 1 );
+    return std::make_tuple( unary_not_if( tt, bit1 ), static_cast<uint32_t>( bit1 << 1 ), std::vector<uint8_t>{ 0 } );
+  }
+
+  assert( num_vars >= 2 && num_vars <= 6 );
+
+  /* There is a problem in determining phases, as they will change by permutation too */
+  auto t1 = tt, t2 = ~tt;
+  auto tmin = std::min( t1, t2 );
+  auto invo = tmin == t2;
+  std::vector<uint8_t> perm( num_vars );
+  std::iota( perm.begin(), perm.end(), 0u );
+  uint32_t phase_t1{ 0 << num_vars };
+  uint32_t phase_t2{ 1 << num_vars };
+
+  fn( t1._bits, perm, phase_t1 );
+  fn( t2._bits, perm, phase_t2 );
+
+  const auto& swaps = detail::swaps[num_vars - 2u];
+  const auto& flips = detail::flips[num_vars - 2u];
+
+  int best_swap = -1;
+  int best_flip = -1;
+
+  for ( std::size_t i = 0; i < swaps.size(); ++i )
+  {
+    const auto pos = swaps[i];
+    swap_adjacent_inplace( t1, pos );
+    swap_adjacent_inplace( t2, pos );
+    std::swap( perm[pos], perm[pos + 1] );
+
+    fn( t1._bits, perm, phase_t1 );
+    fn( t2._bits, perm, phase_t2 );
+
+    if ( t1 < tmin || t2 < tmin )
+    {
+      best_swap = static_cast<int>( i );
+      tmin = std::min( t1, t2 );
+      invo = tmin == t2;
+    }
+  }
+
+  for ( std::size_t j = 0; j < flips.size(); ++j )
+  {
+    const auto pos = flips[j];
+    swap_adjacent_inplace( t1, 0 );
+    flip_inplace( t1, pos );
+    swap_adjacent_inplace( t2, 0 );
+    flip_inplace( t2, pos );
+    std::swap( perm[0], perm[1] );
+    phase_t1 ^= 1 << flips[j];
+    phase_t2 ^= 1 << flips[j];
+
+    fn( t1._bits, perm, phase_t1 );
+    fn( t2._bits, perm, phase_t2 );
+
+    if ( t1 < tmin || t2 < tmin )
+    {
+      best_swap = -1;
+      best_flip = static_cast<int>( j );
+      tmin = std::min( t1, t2 );
+      invo = tmin == t2;
+    }
+
+    for ( std::size_t i = 0; i < swaps.size(); ++i )
+    {
+      const auto pos = swaps[i];
+      swap_adjacent_inplace( t1, pos );
+      swap_adjacent_inplace( t2, pos );
+      std::swap( perm[pos], perm[pos + 1] );
+
+      fn( t1._bits, perm, phase_t1 );
+      fn( t2._bits, perm, phase_t2 );
+
+      if ( t1 < tmin || t2 < tmin )
+      {
+        best_swap = static_cast<int>( i );
+        /* what 'best_flip' records is the original inputs & output to flip */
+        best_flip = static_cast<int>( j );
+        tmin = std::min( t1, t2 );
+        invo = tmin == t2;
+      }
+    }
+  }
+
+  std::vector<uint8_t> best_perm( num_vars );
+  std::iota( best_perm.begin(), best_perm.end(), 0u );
+
+  for ( auto i = 0; i <= best_swap; ++i )
+  {
+    const auto pos = swaps[i];
+    std::swap( best_perm[pos], best_perm[pos + 1] );
+  }
+
+  uint32_t best_phase = uint32_t( invo ) << num_vars;
+  for ( auto i = 0; i <= best_flip; ++i )
+  {
+    best_phase ^= 1 << flips[i];
+  }
+
+  return std::make_tuple( tmin, best_phase, best_perm );
+}
+
 /*! \brief Exact N canonization
 
   Given a truth table, this function finds the lexicographically smallest truth
