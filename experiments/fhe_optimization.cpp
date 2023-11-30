@@ -2,7 +2,9 @@
 #include <ctime>
 #include <iostream>
 
+#include <bill/sat/interface/glucose.hpp>
 #include <mockturtle/algorithms/fhe_optimization.hpp>
+#include <mockturtle/algorithms/node_resynthesis/fhe_optimization_exact_synthesis.hpp>
 #include <mockturtle/algorithms/node_resynthesis/fhe_optimization_database.hpp>
 #include <mockturtle/io/verilog_reader.hpp>
 #include <mockturtle/io/write_verilog.hpp>
@@ -90,32 +92,35 @@ uint32_t fhe_cost( uint32_t mc, uint32_t md )
 
 int main()
 {
-	std::string json_name = "fhe_optimization";
+	// std::string json_name = "fhe_optimization";
+	std::string json_name = "fhe_opt_with_exact_syn";
 	experiments::experiment<std::string, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, float, float, uint32_t, float, bool> exp_res( json_name, "benchmark", "MC before", "MC after", "MC best", "MD before", "MD after", "MD best", "improvement % (local)", "improvement % (global)", "iterations", "runtime [s]", "equivalent" );
 	auto const benchmarks = epfl_benchmarks();
 	std::vector<uint32_t> const best_md = md_sota_epfl();
 	std::vector<uint32_t> const best_mc = mc_sota_epfl();
 	float time_opt{ 0.0f };
 
-	for ( auto i{ 0u }; i < benchmarks.size(); ++i )
+	//for ( auto i{ 0u }; i < benchmarks.size(); ++i )
+	uint8_t target = 17u;
+	for ( auto i{ target }; i <= target; ++i )
 	{
 		auto const benchmark = benchmarks[i];
-		std::cout << "[i] processing " << benchmark << "\n";
+		fmt::print( "[i] processing {}\n", benchmark );
 
 		mockturtle::xag_network xag;
 		auto const read_stats = lorina::read_verilog( benchmark_path( benchmark ), mockturtle::verilog_reader( xag ) );
 		if ( read_stats != lorina::return_code::success )
 		{
-			std::cout << "[e] failed to read benchmark\n";
+			fmt::print( "[e] failed to read benchmark\n" );
 			abort();
 		}
-		std::cout << "[m] read benchmark successfully\n";
+		fmt::print( "[m] read benchmark successfully\n" );
 
 		uint32_t md_best{ best_md[i] };
 		uint32_t mc_best{ best_mc[i] };
 		mockturtle::depth_view<mockturtle::xag_network, mockturtle::detail::num_and, false> xag_md{ xag };
 		uint32_t md_init{ xag_md.depth() };
-		std::cout << "[m] before optimization, the md is " << md_init << "\n";
+		fmt::print( "[m] before optimization, the md is {}\n", md_init );
 		uint32_t md_before{ md_init };
 		uint32_t md_after{ md_before - 1 };
 		uint32_t ite_ctr{ 0u };
@@ -128,13 +133,19 @@ int main()
 		mockturtle::fhe_optimization_database_stats g_local_opt_fn_st;
 		mockturtle::fhe_optimization_database g_local_opt_fn{ "db_fhe_5", g_local_opt_fn_ps, &g_local_opt_fn_st };
 
+		mockturtle::fhe_optimization_exact_syn_params cm_local_opt_fn_ps;
+		cm_local_opt_fn_ps.verbose = true;
+		cm_local_opt_fn_ps.verify_solution = true;
+		mockturtle::fhe_optimization_exact_syn_stats cm_local_opt_fn_st;
+		mockturtle::fhe_optimization_exact_syn<bill::solvers::glucose_41> cm_local_opt_fn{ cm_local_opt_fn_ps, &cm_local_opt_fn_st };
+
 		mockturtle::fhe_optimization_params ps;
 		ps.only_on_critical_path = true;
 		ps.cut_enum_ps.cut_size = 5u;
 		ps.cut_enum_ps.verbose = false;
 		ps.cut_enum_ps.very_verbose = false;
 		ps.progress = true;
-		ps.verbose = false;
+		ps.verbose = true;
 		mockturtle::fhe_optimization_stats st;
 
 		while ( true )
@@ -147,12 +158,13 @@ int main()
 			++ite_ctr;
 
 			clock_t opt_time_begin = clock();
-			mockturtle::xag_network xag_new = mockturtle::fhe_optimization( xag, g_local_opt_fn, ps, &st );
+			// mockturtle::xag_network xag_new = mockturtle::fhe_optimization( xag, g_local_opt_fn, ps, &st );
+			mockturtle::xag_network xag_new = mockturtle::fhe_optimization( xag, g_local_opt_fn, cm_local_opt_fn, ps, &st );
 			time_opt += float( clock() - opt_time_begin ) / CLOCKS_PER_SEC;
 			mockturtle::depth_view<mockturtle::xag_network, mockturtle::detail::num_and, false> xag_new_md{ xag_new };
 			mc_after = mockturtle::costs<mockturtle::xag_network, mockturtle::detail::num_and>( xag_new );
 			md_after = xag_new_md.depth();
-			std::cout << "[i] After " << ite_ctr << "th run, the md becomes " << md_after << "\n";
+			fmt::print( "[i] after {}th run, the md becomes {}\n", ite_ctr, md_after );
 			if ( fhe_cost( mc_before, md_before ) <= fhe_cost( mc_after, md_after ) )
 			{
 				mc_after = mc_before;

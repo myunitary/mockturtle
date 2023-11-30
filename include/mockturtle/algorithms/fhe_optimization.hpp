@@ -55,17 +55,16 @@ struct num_and
 	}
 };
 
-template<class GLocalOptFn>
+template<class GLocalOptFn, class CMLocalOptFn>
 struct fhe_optimization_impl
 {
-	fhe_optimization_impl( xag_network const& ntk, GLocalOptFn const& g_local_opt_fn, fhe_optimization_params const& ps, fhe_optimization_stats& st )
-			: ntk_( ntk ), g_local_opt_fn_( g_local_opt_fn ), ps_( ps ), st_( st )
-	{
-	}
-	// fhe_optimization_impl( xag_network const& ntk, GLocalOptFn const& g_local_opt_fn, CMLocalOptFn const& cm_local_opt_fn, fhe_optimization_params const& ps, fhe_optimization_stats& st )
-	// 		: ntk_( ntk ), g_local_opt_fn_( g_local_opt_fn ), cm_local_opt_fn_( cm_local_opt_fn ), ps_( ps ), st_( st )
+	// fhe_optimization_impl( xag_network const& ntk, GLocalOptFn const& g_local_opt_fn, fhe_optimization_params const& ps, fhe_optimization_stats& st )
+	// 		: ntk_( ntk ), g_local_opt_fn_( g_local_opt_fn ), ps_( ps ), st_( st )
 	// {
 	// }
+	fhe_optimization_impl( xag_network const& ntk, GLocalOptFn const& g_local_opt_fn, CMLocalOptFn const& cm_local_opt_fn, fhe_optimization_params const& ps, fhe_optimization_stats& st )
+			: ntk_( ntk ), g_local_opt_fn_( g_local_opt_fn ), cm_local_opt_fn_( cm_local_opt_fn ), ps_( ps ), st_( st )
+	{}
 
 	xag_network run()
 	{
@@ -139,14 +138,30 @@ struct fhe_optimization_impl
 
 				/* run the generalized local optimization function anyway, since there is no guarantee */
 				/* that the customized local optimization function can find a solution                 */
-				/* TODO: how to skip cuts whose local function's functional MC is 0? */
-				const uint32_t g_cand_m_depth = g_local_opt_fn_.run( res, cuts.truth_table( *pcut ), arrival_times, on_signal );
+				/* TODO: how to skip cuts whose local function's functional MC is 0?                   */
+				const uint32_t g_m_depth = g_local_opt_fn_.run( res, cuts.truth_table( *pcut ), arrival_times, on_signal );
+				if ( ps_.verbose )
+				{
+					fmt::print( "[m] managed to construct a partial network based on DB ({})\n", g_m_depth );
+				}
 
 				/* run the customized local optimization function only if the arrival times of leaves  */
 				/* are not equal                                                                       */
+				uint32_t c_m_depth{ g_m_depth };
 				if ( !equal_arrival_times )
 				{
-					//cm_local_opt_fn_( res, cuts.truth_table( *pcut ), arrival_times, g_cand_m_depth, on_signal );
+					c_m_depth = cm_local_opt_fn_.run( res, cuts.truth_table( *pcut ), arrival_times, g_m_depth, on_signal );
+					if ( ps_.verbose )
+					{
+						if ( c_m_depth != g_m_depth )
+						{
+							fmt::print( "[m] managed to exactly synthesize a better partial network ({}->{})\n", g_m_depth, c_m_depth );
+						}
+						else
+						{
+							fmt::print( "[m] failed to exactly synthesize a better partial network\n" );
+						}
+					}
 				}
 			}
 			old2new[n] = best_impl;
@@ -165,7 +180,7 @@ struct fhe_optimization_impl
 private:
 	xag_network const& ntk_;
 	GLocalOptFn const& g_local_opt_fn_;
-	//CMLocalOptFn const& cm_local_opt_fn_;
+	CMLocalOptFn const& cm_local_opt_fn_;
 	fhe_optimization_params const& ps_;
 	fhe_optimization_stats& st_;
 };
@@ -173,13 +188,14 @@ private:
 } /* detail */
 
 /* TODO: debug the generic local optimization function */
-// template<class GLocalOptFn, class CMLocalOptFn>
-// xag_network fhe_optimization( xag_network const& ntk, GLocalOptFn const& g_local_opt_fn, CMLocalOptFn const& cm_local_opt_fn, fhe_optimization_params const& ps = {}, fhe_optimization_stats* pst = nullptr )
-template<class GLocalOptFn>
-xag_network fhe_optimization( xag_network const& ntk, GLocalOptFn const& g_local_opt_fn, fhe_optimization_params const& ps = {}, fhe_optimization_stats* pst = nullptr )
+template<class GLocalOptFn, class CMLocalOptFn>
+xag_network fhe_optimization( xag_network const& ntk, GLocalOptFn const& g_local_opt_fn, CMLocalOptFn const& cm_local_opt_fn, fhe_optimization_params const& ps = {}, fhe_optimization_stats* pst = nullptr )
+// template<class GLocalOptFn>
+// xag_network fhe_optimization( xag_network const& ntk, GLocalOptFn const& g_local_opt_fn, fhe_optimization_params const& ps = {}, fhe_optimization_stats* pst = nullptr )
 {
 	fhe_optimization_stats st;
-	const auto res = detail::fhe_optimization_impl( ntk, g_local_opt_fn, ps, st ).run();
+	// const auto res = detail::fhe_optimization_impl( ntk, g_local_opt_fn, ps, st ).run();
+	const auto res = detail::fhe_optimization_impl( ntk, g_local_opt_fn, cm_local_opt_fn, ps, *pst ).run();
 
 	if ( pst )
 	{
