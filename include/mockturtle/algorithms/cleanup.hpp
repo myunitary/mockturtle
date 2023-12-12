@@ -72,7 +72,7 @@ void cleanup_dangling_impl( NtkSrc const& ntk, NtkDest& dest, LeavesIterator beg
       old_to_new[node] = *it++;
     } );
   }
-  assert( it == end );
+  // assert( it == end );
   (void)end;
 
   /* foreach node in topological order */

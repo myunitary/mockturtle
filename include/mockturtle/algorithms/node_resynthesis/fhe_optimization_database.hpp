@@ -174,6 +174,11 @@ public:
 		/* post-process */
 		on_signal( { po, delay } );
 
+
+		/* for debugging */
+		// fmt::print( "[m] databased-based new implementation is : Node {}{}, with the delay of {}\n", ( res.is_complemented( po ) ? "!" : "" ), res.get_node( po ), delay );
+
+
 		return delay;
 	}
 

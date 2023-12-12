@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <limits>
+#include <random>
 
 #include <kitty/operations.hpp>
 #include <mockturtle/algorithms/cleanup.hpp>
@@ -20,6 +21,8 @@ namespace mockturtle
 struct fhe_optimization_params
 {
 	bool only_on_critical_path{ true };
+	bool always_accept_exact_impl{ false };
+	bool randomly_take_equal_impl{ false };
 	cut_enumeration_params cut_enum_ps;
 	bool progress{ true };
 	bool verbose{ false };
@@ -134,6 +137,16 @@ struct fhe_optimization_impl
 					{
 						best_impl = cand;
 					}
+					else if ( ps_.randomly_take_equal_impl && ( cand.m_depth == best_impl.m_depth ) )
+					{
+						std::random_device rd;    // seed source
+						std::mt19937 gen( rd() ); // Mersenne Twister algorithm-based random number engine, seeded with rd()
+						std::uniform_int_distribution<unsigned int> random( 0, 1 );
+						if ( random( gen ) )
+						{
+							best_impl = cand;
+						}
+					}
 				};
 
 				/* run the generalized local optimization function anyway, since there is no guarantee */
@@ -148,9 +161,11 @@ struct fhe_optimization_impl
 				/* run the customized local optimization function only if the arrival times of leaves  */
 				/* are not equal                                                                       */
 				uint32_t c_m_depth{ g_m_depth };
+				xag_network::signal c_impl;
 				if ( !equal_arrival_times )
 				{
-					c_m_depth = cm_local_opt_fn_.run( res, cuts.truth_table( *pcut ), arrival_times, g_m_depth, on_signal );
+					std::tie( c_m_depth, c_impl ) = cm_local_opt_fn_.run( res, cuts.truth_table( *pcut ), arrival_times, g_m_depth, on_signal );
+
 					if ( ps_.verbose )
 					{
 						if ( c_m_depth != g_m_depth )
@@ -162,10 +177,27 @@ struct fhe_optimization_impl
 							fmt::print( "[m] failed to exactly synthesize a better partial network\n" );
 						}
 					}
+
+					if ( ps_.always_accept_exact_impl && c_m_depth != g_m_depth )
+					{
+						old2new[n] = { c_impl, c_m_depth };
+						current_m_depth = std::max( current_m_depth, c_m_depth );
+
+
+						/* for debugging */
+						// fmt::print( "[m] Node {}{} is forced to be the new implementation of Node {}\n", ( res.is_complemented( c_impl ) ? "!" : "" ), res.get_node( c_impl ), n );
+
+
+						return;
+					}
 				}
 			}
 			old2new[n] = best_impl;
 			current_m_depth = std::max( current_m_depth, best_impl.m_depth );
+
+
+			/* for debugging */
+			// fmt::print( "[m] Node {}{} is selected as the new implementation of Node {}\n", ( res.is_complemented( best_impl.f ) ? "!" : "" ), res.get_node( best_impl.f ), n );
 		} );
 
 		/* pos */

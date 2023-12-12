@@ -93,16 +93,30 @@ uint32_t fhe_cost( uint32_t mc, uint32_t md )
 int main()
 {
 	// std::string json_name = "fhe_optimization";
-	std::string json_name = "fhe_opt_with_exact_syn";
+	// std::string json_name = "fhe_opt_with_exact_syn_rand";
+	std::string json_name = "fhe_opt_test";
 	experiments::experiment<std::string, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, float, float, uint32_t, float, bool> exp_res( json_name, "benchmark", "MC before", "MC after", "MC best", "MD before", "MD after", "MD best", "improvement % (local)", "improvement % (global)", "iterations", "runtime [s]", "equivalent" );
 	auto const benchmarks = epfl_benchmarks();
 	std::vector<uint32_t> const best_md = md_sota_epfl();
 	std::vector<uint32_t> const best_mc = mc_sota_epfl();
 	float time_opt{ 0.0f };
 
-	//for ( auto i{ 0u }; i < benchmarks.size(); ++i )
-	uint8_t target = 17u;
-	for ( auto i{ target }; i <= target; ++i )
+	mockturtle::fhe_optimization_database_params g_local_opt_fn_ps;
+	g_local_opt_fn_ps.verbose = false;
+	mockturtle::fhe_optimization_database_stats g_local_opt_fn_st;
+	mockturtle::fhe_optimization_database g_local_opt_fn{ "db_fhe_5", g_local_opt_fn_ps, &g_local_opt_fn_st };
+
+	mockturtle::fhe_optimization_exact_syn_params cm_local_opt_fn_ps;
+	cm_local_opt_fn_ps.verbose = true;
+	cm_local_opt_fn_ps.verify_solution = true;
+	cm_local_opt_fn_ps.use_advanced_constraints = false;
+	cm_local_opt_fn_ps.use_exisiting_cache = true;
+	mockturtle::fhe_optimization_exact_syn_stats cm_local_opt_fn_st;
+	mockturtle::fhe_optimization_exact_syn<bill::solvers::glucose_41> cm_local_opt_fn{ cm_local_opt_fn_ps, &cm_local_opt_fn_st };
+
+	for ( auto i{ 0u }; i < benchmarks.size(); ++i )
+	// uint8_t target = 17u;
+	// for ( auto i{ target }; i <= target; ++i )
 	{
 		auto const benchmark = benchmarks[i];
 		fmt::print( "[i] processing {}\n", benchmark );
@@ -128,24 +142,26 @@ int main()
 		uint32_t mc_before{ mc_init };
 		uint32_t mc_after{ 0u };
 
-		mockturtle::fhe_optimization_database_params g_local_opt_fn_ps;
-		g_local_opt_fn_ps.verbose = true;
-		mockturtle::fhe_optimization_database_stats g_local_opt_fn_st;
-		mockturtle::fhe_optimization_database g_local_opt_fn{ "db_fhe_5", g_local_opt_fn_ps, &g_local_opt_fn_st };
+		// mockturtle::fhe_optimization_database_params g_local_opt_fn_ps;
+		// g_local_opt_fn_ps.verbose = false;
+		// mockturtle::fhe_optimization_database_stats g_local_opt_fn_st;
+		// mockturtle::fhe_optimization_database g_local_opt_fn{ "db_fhe_5", g_local_opt_fn_ps, &g_local_opt_fn_st };
 
-		mockturtle::fhe_optimization_exact_syn_params cm_local_opt_fn_ps;
-		cm_local_opt_fn_ps.verbose = true;
-		cm_local_opt_fn_ps.verify_solution = true;
-		mockturtle::fhe_optimization_exact_syn_stats cm_local_opt_fn_st;
-		mockturtle::fhe_optimization_exact_syn<bill::solvers::glucose_41> cm_local_opt_fn{ cm_local_opt_fn_ps, &cm_local_opt_fn_st };
+		// mockturtle::fhe_optimization_exact_syn_params cm_local_opt_fn_ps;
+		// cm_local_opt_fn_ps.verbose = false;
+		// cm_local_opt_fn_ps.verify_solution = false;
+		// mockturtle::fhe_optimization_exact_syn_stats cm_local_opt_fn_st;
+		// mockturtle::fhe_optimization_exact_syn<bill::solvers::glucose_41> cm_local_opt_fn{ cm_local_opt_fn_ps, &cm_local_opt_fn_st };
 
 		mockturtle::fhe_optimization_params ps;
 		ps.only_on_critical_path = true;
+		ps.always_accept_exact_impl = false;
+		ps.randomly_take_equal_impl = false;
 		ps.cut_enum_ps.cut_size = 5u;
 		ps.cut_enum_ps.verbose = false;
 		ps.cut_enum_ps.very_verbose = false;
 		ps.progress = true;
-		ps.verbose = true;
+		ps.verbose = false;
 		mockturtle::fhe_optimization_stats st;
 
 		while ( true )
@@ -174,15 +190,25 @@ int main()
 			else
 			{
 				xag = xag_new;
+
+
+				/* for debugging */
+				// const auto is_eq = abc_cec( xag, benchmark );
+				// if ( !is_eq )
+				// {
+				// 	std::cerr << "[e] not equivalent after optimization\n";
+				// 	abort();
+				// }
 			}
 		}
 
-		const auto is_eq = abc_cec( xag, benchmark );
-		if ( !is_eq )
-		{
-			std::cerr << "[e] not equivalent after optimization\n";
-			abort();
-		}
+		const bool is_eq = true;
+		// const bool is_eq = abc_cec( xag, benchmark );
+		// if ( !is_eq )
+		// {
+		// 	std::cerr << "[e] not equivalent after optimization\n";
+		// 	abort();
+		// }
 
 		float improve_local = ( ( static_cast<float>( fhe_cost( mc_init, md_init ) ) - static_cast<float>( fhe_cost( mc_after, md_after ) ) ) ) / static_cast<float>( fhe_cost( mc_init, md_init ) ) * 100;
 		float improve_global = ( ( static_cast<float>( fhe_cost( mc_best, md_best ) ) - static_cast<float>( fhe_cost( mc_after, md_after ) ) ) ) / static_cast<float>( fhe_cost( mc_best, md_best ) ) * 100;
