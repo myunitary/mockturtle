@@ -285,7 +285,7 @@ struct md_optimization_exact_syn
 
 public:
 	md_optimization_exact_syn( kitty::dynamic_truth_table const& func, uint32_t const& g_m_depth,
-	                           uint32_t& c_m_depth, std::vector<arrival_time_pair> const& inputs, 
+	                           uint32_t& c_m_depth, std::vector<signal_level_pair> const& inputs, 
 	                           fhe_optimization_exact_syn_params const& ps,
 	                           fhe_optimization_exact_syn_stats* pst,
 	                           xag_network& xag_res,
@@ -953,7 +953,7 @@ public:
 	}
 
 	template<typename Fn>
-	std::pair<uint32_t, xag_network::signal> run( xag_network& res, kitty::dynamic_truth_table const& func, std::vector<arrival_time_pair> const& inputs, uint32_t g_m_depth, Fn&& on_signal ) const
+	std::pair<uint32_t, xag_network::signal> run( xag_network& res, kitty::dynamic_truth_table const& func, std::vector<signal_level_pair> const& inputs, uint32_t g_m_depth, Fn&& on_signal ) const
 	{
 		uint32_t c_m_depth{ g_m_depth };
 		auto p_po = detail::md_optimization_exact_syn<Solver>( func, g_m_depth, c_m_depth, inputs, ps_, pst_, res,
@@ -975,7 +975,7 @@ public:
 	}
 
 	// template<typename Fn>
-	// uint32_t run1( xag_network& res, kitty::dynamic_truth_table const& func, std::vector<arrival_time_pair> const& inputs, uint32_t g_m_depth, Fn&& on_signal ) const
+	// uint32_t run1( xag_network& res, kitty::dynamic_truth_table const& func, std::vector<signal_level_pair> const& inputs, uint32_t g_m_depth, Fn&& on_signal ) const
 	// {
 	// 	const auto num_vars = func.num_vars();
 	// 	assert( num_vars == inputs.size() );

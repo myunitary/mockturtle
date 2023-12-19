@@ -336,7 +336,7 @@ private:
 		uint32_t range_begin = num_vars_;
 		uint32_t range_end = num_vars_ + and_ladder_[0];
 		uint32_t i_ext{ and_ladder_[0] };
-		for ( auto d{ 1u }; d < and_ladder_.size() - 1u; ++d )
+		for ( auto d{ 1u }; d < and_ladder_.size(); ++d )
 		{
 			for ( auto i_int{ 0u }; i_int < and_ladder_[d]; ++i_int )
 			{

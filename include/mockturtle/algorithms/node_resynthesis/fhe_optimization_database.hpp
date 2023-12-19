@@ -59,7 +59,7 @@ public:
 	}
 
 	template<typename Fn>
-	uint32_t run( xag_network& res, kitty::dynamic_truth_table const& func, std::vector<arrival_time_pair> const& inputs, Fn&& on_signal ) const
+	uint32_t run( xag_network& res, kitty::dynamic_truth_table const& func, std::vector<signal_level_pair> const& inputs, Fn&& on_signal ) const
 	{
 		const auto num_vars = func.num_vars();
 		assert( num_vars == inputs.size() );

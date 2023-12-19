@@ -37,7 +37,7 @@ struct fhe_optimization_stats
 	}
 };
 
-struct arrival_time_pair
+struct signal_level_pair
 {
 	xag_network::signal f;
 	uint32_t m_depth;
@@ -80,7 +80,7 @@ struct fhe_optimization_impl
 		/* cut enumeration */
 		const auto cuts = cut_enumeration<xag_network, true>( ntk_, ps_.cut_enum_ps, &( st_.cut_enum_st ) );
 
-		node_map<arrival_time_pair, xag_network> old2new{ ntk_ };
+		node_map<signal_level_pair, xag_network> old2new{ ntk_ };
 
 		/* constants */
 		old2new[ntk_.get_constant( false )] = { res.get_constant( false ), 0u };
@@ -112,7 +112,7 @@ struct fhe_optimization_impl
 				return;
 			}
 
-			arrival_time_pair best_impl{ {}, std::numeric_limits<uint32_t>::max() };
+			signal_level_pair best_impl{ {}, std::numeric_limits<uint32_t>::max() };
 			for ( auto const& pcut: cuts.cuts( ntk_.node_to_index( n ) ) )
 			{
 				/* trivial cut */
@@ -121,7 +121,7 @@ struct fhe_optimization_impl
 					continue;
 				}
 
-				std::vector<arrival_time_pair> arrival_times( pcut->size() );
+				std::vector<signal_level_pair> arrival_times( pcut->size() );
 				bool equal_arrival_times{ true };
 				const uint32_t first_arrival_time{ old2new[ntk_.index_to_node( *( pcut->begin() ) )].m_depth };
 				std::transform( pcut->begin(), pcut->end(), arrival_times.begin(), [&]( auto const& leaf ) { 
@@ -132,7 +132,7 @@ struct fhe_optimization_impl
 
 				/* there is room exploring the metric evaluating the quality of a local implementation */
 				/* currently, we simply adopt the mult. depth as the only criteria                     */
-				const auto on_signal = [&]( arrival_time_pair const& cand ) {
+				const auto on_signal = [&]( signal_level_pair const& cand ) {
 					if ( cand.m_depth < best_impl.m_depth )
 					{
 						best_impl = cand;

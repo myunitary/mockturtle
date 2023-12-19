@@ -616,7 +616,7 @@ void md_optimal_exact_synthesis_gendb( std::string const filename )
 	  }
 
 	  std::ofstream db_md;
-	  db_md.open( "db_md_5", std::ios::app );
+	  db_md.open( "db_fhe_5_new", std::ios::app );
     db_md << "0x" << repr_str << " ";
     db_md << "0x" << tt_str << " ";
     db_md << num_vars << " ";
@@ -638,12 +638,187 @@ void md_optimal_exact_synthesis_gendb( std::string const filename )
   }
 }
 
+void condense_6_variable_mc_lookup()
+{
+	std::ifstream db;
+	db.open( "../experiments/db", std::ios::in );
+	std::string line;
+	uint32_t pos{ 0u };
+	uint32_t cnt{ 0u };
+	std::ofstream record_mc_lookup;
+	record_mc_lookup.open( "dense_6_mc_lookup", std::ios::out );
+	while ( std::getline( db, line ) )
+	{
+		pos = static_cast<unsigned>( line.find( '\t' ) );
+		const auto name = line.substr( 0, pos++ );
+		// std::cout << "[m] name : " << name << "\n";
+		auto original = line.substr( pos, 16u );
+		// std::cout << "[m] original : " << original << "\n";
+		pos += 17u;
+		const auto token_f = line.substr( pos, 16u );
+		// std::cout << "[m] token : " << token_f << "\n";
+		pos += 17u;
+		const uint8_t mc = static_cast<uint8_t>( std::stoul( line.substr( pos, 1u ) ) );
+		// std::cout << "[m] mc : " << static_cast<uint32_t>( mc ) << "\n";
+		pos += 2u;
+		line.erase( 0, pos );
+		auto circuit = line;
+
+		std::string token = circuit.substr( 0, circuit.find( ' ' ) );
+		circuit.erase( 0, circuit.find( ' ' ) + 1 );
+		const uint8_t inputs = static_cast<uint8_t>( std::stoul( token ) );
+		// std::cout << "[m] num of vars : " << static_cast<uint32_t> (inputs ) << "\n";
+		record_mc_lookup << token_f << " " << static_cast<uint32_t>( mc ) << "\n";
+    std::cout << "[m] " << ++cnt << " entries processed\n";
+	}
+
+	record_mc_lookup.close();
+	db.close();
+}
+
+void profile_6_variable_mc_optimal_xags()
+{
+	std::unordered_map<uint64_t, std::pair<uint8_t, uint8_t>> mc_lookup;
+	// uint8_t mc_max{}, md_max{};
+	std::ifstream db;
+	db.open( "../experiments/db", std::ios::in );
+	std::string line;
+	uint32_t pos{ 0u };
+	uint32_t cnt{ 0u };
+	while ( std::getline( db, line ) )
+	{
+		pos = static_cast<unsigned>( line.find( '\t' ) );
+		const auto name = line.substr( 0, pos++ );
+		// std::cout << "[m] name : " << name << "\n";
+		auto original = line.substr( pos, 16u );
+		// std::cout << "[m] original : " << original << "\n";
+		pos += 17u;
+		const auto token_f = line.substr( pos, 16u );
+		// std::cout << "[m] token : " << token_f << "\n";
+		pos += 17u;
+		const uint8_t mc = static_cast<uint8_t>( std::stoul( line.substr( pos, 1u ) ) );
+		// std::cout << "[m] mc : " << static_cast<uint32_t>( mc ) << "\n";
+		pos += 2u;
+		line.erase( 0, pos );
+		auto circuit = line;
+
+		std::string token = circuit.substr( 0, circuit.find( ' ' ) );
+		circuit.erase( 0, circuit.find( ' ' ) + 1 );
+		const uint8_t inputs = static_cast<uint8_t>( std::stoul( token ) );
+		// std::cout << "[m] num of vars : " << static_cast<uint32_t> (inputs ) << "\n";
+
+		mockturtle::xag_network xag;
+		std::vector<mockturtle::xag_network::signal> hashing_circ( inputs );
+		std::generate( hashing_circ.begin(), hashing_circ.end(), [&]() { return xag.create_pi(); } );
+
+    while ( circuit.size() > 4 )
+    {
+    	std::array<unsigned, 2> signals;
+    	std::vector<mockturtle::xag_network::signal> ff( 2 );
+    	for ( auto j = 0u; j < 2u; j++ )
+    	{
+    		token = circuit.substr( 0, circuit.find( ' ' ) );
+        circuit.erase( 0, circuit.find( ' ' ) + 1 );
+        signals[j] = std::stoul( token );
+        if ( signals[j] == 0 )
+        {
+          ff[j] = xag.get_constant( false );
+        }
+        else if ( signals[j] == 1 )
+        {
+          ff[j] = xag.get_constant( true );
+        }
+        else
+        {
+          ff[j] = hashing_circ[signals[j] / 2 - 1] ^ ( signals[j] % 2 != 0 );
+        }
+        // std::cout << "[m] signal " << j + 1 << " : " << ( signals[j] % 2 != 0 ? "~Node " : "Node " ) << signals[j] / 2 << "\n";
+      }
+      circuit.erase( 0, circuit.find( ' ' ) + 1 );
+
+      if ( signals[0] > signals[1] )
+      {
+        hashing_circ.push_back( xag.create_xor( ff[0], ff[1] ) );
+      }
+      else
+      {
+        hashing_circ.push_back( xag.create_and( ff[0], ff[1] ) );
+      }
+    }
+
+    const auto output = std::stoul( circuit );
+    const auto f = hashing_circ[output / 2 - 1] ^ ( output % 2 != 0 );
+    // std::cout << "[m] PO : " << ( output % 2 != 0 ? "~Node " : "Node " ) << output / 2 << "\n";
+    xag.create_po( f );
+
+    // mockturtle::depth_view<mockturtle::xag_network, details::num_and<mockturtle::xag_network>, false> xag_md{ xag };
+    // uint8_t md = static_cast<uint8_t>( xag_md.depth() );
+    original = original.substr( 0, 1 << ( inputs - 2 ) );
+    kitty::dynamic_truth_table func( inputs );
+    kitty::create_from_hex_string( func, original );
+    uint64_t repr = *( kitty::hybrid_exact_spectral_canonization( func ).cbegin() );
+    // mc_lookup.insert( { repr, { static_cast<uint8_t>( mc ), md } } );
+    mc_lookup.insert( { repr, { inputs, mc } } );
+    std::cout << "[m] num of vars : " << static_cast<uint32_t> ( mc_lookup[repr].first ) << "\n";
+    std::cout << "[m] mc : " << static_cast<uint32_t>( mc_lookup[repr].second ) << "\n";
+    // mc_lookup.insert( { original, { static_cast<uint8_t>( mc ), md } } );
+    // std::cout << "[m] " << mc_lookup.size() << " entries in the cache\n";
+    std::cout << "[m] " << ++cnt << " entries processed\n";
+    // mc_max = std::max( mc_max, static_cast<uint8_t>( mc ) );
+    // md_max = std::max( md_max, md );
+    // if ( md == 5u )
+    // {
+    // 	std::cout << "[m] current MC is : " << mc << "\n";
+    // }
+    // if ( mc == 6u )
+    // {
+    // 	std::cout << "[m] current MD is : " << static_cast<uint32_t>( md ) << "\n";
+    // }
+	}
+
+	// analyzing constructed XAGs
+	std::ofstream record_mc_lookup;
+	record_mc_lookup.open( "6_variable_mc_lookup", std::ios::out );
+	// std::vector<uint32_t> max_mc_of_interest( 6 );
+	for ( auto it{ mc_lookup.begin() }; it != mc_lookup.end(); ++it )
+	{
+		uint8_t mc_current{ it->second.first };
+		// uint8_t md_current{ it->second.second };
+		uint8_t var_current{ it->second.second };
+		record_mc_lookup << it->first << " " << static_cast<uint32_t>( mc_current ) << " " << static_cast<uint32_t>( var_current ) << "\n";
+
+	// 	if ( mc_current > 0 && md_current == 1 )
+	// 	{
+	// 		continue;
+	// 	}
+
+	// 	uint8_t md_of_interest = md_current - 1u;		
+	// 	uint32_t mc_of_interest_up = mc_current * md_current * md_current / ( md_of_interest * md_of_interest );
+	// 	if ( mc_of_interest_up * md_of_interest * md_of_interest == mc_current * md_current * md_current )
+	// 	{
+	// 		--mc_of_interest_up;
+	// 	}
+
+	// 	max_mc_of_interest[md_of_interest - 1] = std::max( mc_of_interest_up, max_mc_of_interest[md_of_interest - 1] );
+	}
+
+	record_mc_lookup.close();
+
+	// for ( auto d{ 1u }; d <= max_mc_of_interest.size(); ++d )
+	// {
+	// 	std::cout << "For MD = " << d << ", the largest MC of interest is " << max_mc_of_interest[d - 1] << "\n";
+	// }
+	// std::cout << "MC max : " << static_cast<uint32_t>( mc_max ) << ", MD max : " << static_cast<uint32_t>( md_max ) << "\n";
+}
+
 int main ()
 {
 	//profile_mc_optimal_xags( "../experiments/db_mc_5" );
 	//analyze_mc_optimal_xags();
-	md_optimal_exact_synthesis();
-	//md_optimal_exact_synthesis_gendb( "../experiments/db_mc_5" );
+	//md_optimal_exact_synthesis();
+	// md_optimal_exact_synthesis_gendb( "../experiments/db_mc_5" );
+	condense_6_variable_mc_lookup();
+	// profile_6_variable_mc_optimal_xags();
 
 	return 0;
 
