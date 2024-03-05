@@ -82,6 +82,7 @@ struct xag_hash
   `data[0].h1`: Fan-out size (we use MSB to indicate whether a node is dead)
   `data[0].h2`: Application-specific value
   `data[1].h1`: Visited flag
+  `data[1].h2`: Is terminal node (PI or CI)
 */
 using xag_storage = storage<regular_node<2, 2, 1>,
                             empty_storage_data,
@@ -204,6 +205,7 @@ public:
     const auto index = _storage->nodes.size();
     auto& node = _storage->nodes.emplace_back();
     node.children[0].data = node.children[1].data = _storage->inputs.size();
+    node.data[1].h2 = 1; // mark as PI
     _storage->inputs.emplace_back( index );
     return { index, 0 };
   }
@@ -229,12 +231,12 @@ public:
 
   bool is_ci( node const& n ) const
   {
-    return _storage->nodes[n].children[0].data == _storage->nodes[n].children[1].data;
+    return _storage->nodes[n].data[1].h2 == 1;
   }
 
   bool is_pi( node const& n ) const
   {
-    return _storage->nodes[n].children[0].data == _storage->nodes[n].children[1].data && !is_constant( n );
+    return _storage->nodes[n].data[1].h2 == 1 && !is_constant( n );
   }
 
   bool constant_value( node const& n ) const
@@ -524,7 +526,7 @@ public:
     }
 
     // determine gate type of n
-    auto _is_and = node.children[0].index < node.children[1].index;
+    auto _is_and = node.children[0].index <= node.children[1].index;
 
     // determine potential new children of node n
     signal child1 = new_signal;
@@ -587,6 +589,79 @@ public:
     }
 
     return std::nullopt;
+  }
+
+  void replace_in_node_no_restrash( node const& n, node const& old_node, signal new_signal )
+  {
+    auto& node = _storage->nodes[n];
+
+    uint32_t fanin = 0u;
+    if ( node.children[0].index == old_node )
+    {
+      fanin = 0u;
+      new_signal.complement ^= node.children[0].weight;
+    }
+    else if ( node.children[1].index == old_node )
+    {
+      fanin = 1u;
+      new_signal.complement ^= node.children[1].weight;
+    }
+    else
+    {
+      return;
+    }
+
+    // determine gate type of n
+    auto _is_and = node.children[0].index <= node.children[1].index;
+
+    // determine potential new children of node n
+    signal child1 = new_signal;
+    signal child0 = node.children[fanin ^ 1];
+
+    if ( ( _is_and && child0.index > child1.index ) || ( !_is_and && child0.index < child1.index ) )
+    {
+      std::swap( child0, child1 );
+    }
+
+    // if a buffer is created adjust the polarities
+    if ( child0.index == child1.index && !_is_and )
+    {
+      if ( child0.complement == child1.complement )
+      {
+        child0.data = 0; // the buffer is a constant zero
+        child1.data = 0; // the buffer is a constant zero
+      }
+      else
+      {
+        child0.data = 1; // the buffer is a constant one
+        child1.data = 1; // the buffer is a constant zero
+      }
+    }
+
+    // don't check for trivial cases
+
+    // remember before
+    const auto old_child0 = signal{ node.children[0] };
+    const auto old_child1 = signal{ node.children[1] };
+
+    // erase old node in hash table
+    _storage->hash.erase( node );
+
+    // insert updated node into hash table
+    node.children[0] = child0;
+    node.children[1] = child1;
+    if ( _storage->hash.find( node ) == _storage->hash.end() )
+    {
+      _storage->hash[node] = n;
+    }
+
+    // update the reference counter of the new signal
+    _storage->nodes[new_signal.index].data[0].h1++;
+
+    for ( auto const& fn : _events->on_modified )
+    {
+      ( *fn )( n, { old_child0, old_child1 } );
+    }
   }
 
   void replace_in_outputs( node const& old_node, signal const& new_signal )
@@ -719,6 +794,31 @@ public:
       }
     }
   }
+
+  void substitute_node_no_restrash( node const& old_node, signal const& new_signal )
+  {
+    if ( is_dead( get_node( new_signal ) ) )
+    {
+      revive_node( get_node( new_signal ) );
+    }
+
+    for ( auto idx = 1u; idx < _storage->nodes.size(); ++idx )
+    {
+      if ( is_ci( idx ) || is_dead( idx ) )
+        continue; /* ignore CIs and dead nodes */
+
+      replace_in_node_no_restrash( idx, old_node, new_signal );
+    }
+
+    /* check outputs */
+    replace_in_outputs( old_node, new_signal );
+
+    /* recursively reset old node */
+    if ( old_node != new_signal.index )
+    {
+      take_out_node( old_node );
+    }
+  }
 #pragma endregion
 
 #pragma region Structural properties
@@ -776,7 +876,7 @@ public:
 
   bool is_and( node const& n ) const
   {
-    return n > 0 && !is_ci( n ) && ( _storage->nodes[n].children[0].index < _storage->nodes[n].children[1].index );
+    return n > 0 && !is_ci( n ) && ( _storage->nodes[n].children[0].index <= _storage->nodes[n].children[1].index );
   }
 
   bool is_or( node const& n ) const
@@ -831,7 +931,7 @@ public:
   kitty::dynamic_truth_table node_function( const node& n ) const
   {
     kitty::dynamic_truth_table _func( 2 );
-    if ( _storage->nodes[n].children[0u].index < _storage->nodes[n].children[1u].index )
+    if ( _storage->nodes[n].children[0u].index <= _storage->nodes[n].children[1u].index )
     {
       _func._bits[0] = 0x8;
       return _func;
@@ -1032,7 +1132,7 @@ public:
     auto v1 = *begin++;
     auto v2 = *begin++;
 
-    if ( c1.index < c2.index )
+    if ( c1.index <= c2.index )
     {
       return ( v1 ^ c1.weight ) && ( v2 ^ c2.weight );
     }
@@ -1056,7 +1156,7 @@ public:
     auto tt1 = *begin++;
     auto tt2 = *begin++;
 
-    if ( c1.index < c2.index )
+    if ( c1.index <= c2.index )
     {
       return ( c1.weight ? ~tt1 : tt1 ) & ( c2.weight ? ~tt2 : tt2 );
     }
@@ -1087,7 +1187,7 @@ public:
     assert( result.num_blocks() == tt1.num_blocks() || ( result.num_blocks() == tt1.num_blocks() - 1 && result.num_bits() % 64 == 0 ) );
 
     result.resize( tt1.num_bits() );
-    if ( c1.index < c2.index )
+    if ( c1.index <= c2.index )
     {
       result._bits.back() = ( c1.weight ? ~( tt1._bits.back() ) : tt1._bits.back() ) & ( c2.weight ? ~( tt2._bits.back() ) : tt2._bits.back() );
     }
