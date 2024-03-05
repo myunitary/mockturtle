@@ -10,6 +10,7 @@
 #include <kitty/spectral.hpp>
 #include <kitty/operations.hpp>
 #include <mockturtle/algorithms/cleanup.hpp>
+#include <mockturtle/algorithms/fhe_optimization.hpp>
 #include <mockturtle/utils/stopwatch.hpp>
 #include <mockturtle/views/cut_view.hpp>
 

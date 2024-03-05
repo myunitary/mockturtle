@@ -6,12 +6,14 @@
 #include <random>
 
 #include <kitty/operations.hpp>
+#include <kitty/print.hpp>
 #include <mockturtle/algorithms/cleanup.hpp>
 #include <mockturtle/algorithms/cut_enumeration.hpp>
 #include <mockturtle/networks/xag.hpp>
 #include <mockturtle/utils/cost_functions.hpp>
 #include <mockturtle/utils/node_map.hpp>
 #include <mockturtle/utils/progress_bar.hpp>
+#include <mockturtle/views/cut_view.hpp>
 #include <mockturtle/views/depth_view.hpp>
 #include <mockturtle/views/topo_view.hpp>
 
@@ -45,6 +47,45 @@ struct signal_level_pair
 
 namespace detail
 {
+
+
+/* for generating example */
+void profile_partial_XAG( cut_view<xag_network> const& xag )
+{
+	xag.foreach_gate( [&]( auto const& n ) {
+		fmt::print( "Node {} : ", n );
+		uint32_t ni1, ni2;
+		bool neg1{ false }, neg2{ false }, ind{ false };
+		xag.foreach_fanin( n, [&]( auto const& f ) {
+			if ( ind )
+			{
+				ni2 = f.index;
+				if ( xag.is_complemented( f ) )
+				{
+					neg2 = true;
+				}
+			}
+			else
+			{
+				ni1 = f.index;
+				if ( xag.is_complemented( f ) )
+				{
+					neg1 = true;
+				}
+			}
+			ind = true;
+		} );
+		if ( ni1 > ni2 )
+		{
+			fmt::print( "XOR( {}Node {}, {}Node {} )\n", ( neg1 ? "~" : "" ), ni1, ( neg2 ? "~" : "" ), ni2 );
+		}
+		else
+		{
+			fmt::print( "AND( {}Node {}, {}Node {} )\n", ( neg1 ? "~" : "" ), ni1, ( neg2 ? "~" : "" ), ni2 );
+		}
+	} );
+}
+
 
 struct num_and
 {
@@ -162,6 +203,14 @@ struct fhe_optimization_impl
 				/* are not equal                                                                       */
 				uint32_t c_m_depth{ g_m_depth };
 				xag_network::signal c_impl;
+
+
+				/* for generating example */
+				const xag_network::signal g_impl_f{ best_impl.f };
+
+
+				/* for debugging */
+				// equal_arrival_times = true;
 				if ( !equal_arrival_times )
 				{
 					std::tie( c_m_depth, c_impl ) = cm_local_opt_fn_.run( res, cuts.truth_table( *pcut ), arrival_times, g_m_depth, on_signal );
@@ -177,6 +226,39 @@ struct fhe_optimization_impl
 							fmt::print( "[m] failed to exactly synthesize a better partial network\n" );
 						}
 					}
+
+
+					/* for generating example */
+					if ( c_m_depth != g_m_depth && ( pcut->size() == 4u ) )
+					{
+						fmt::print( "Boolean function : {}\n", kitty::to_binary( cuts.truth_table( *pcut ) ) );
+						std::cout << "Input mult. level : ";
+						std::vector<xag_network::signal> leaves;
+						for ( auto const& arrival_time_p : arrival_times )
+						{
+							leaves.emplace_back( arrival_time_p.f );
+							std::cout << arrival_time_p.m_depth << " ";
+						}
+						std::cout << std::endl;
+						std::cout << "Leaves : ";
+						for ( auto const& leaf : leaves )
+						{
+							std::cout << "Node " << leaf.index << " ";
+						}
+						std::cout << std::endl;
+						fmt::print( "G_MD : {}; C_MD : {}\n", g_m_depth, c_m_depth );
+						std::cout << "Without input mult. level considered : \n";
+						cut_view<xag_network> partial{ res, leaves, g_impl_f };
+						profile_partial_XAG( partial );
+
+						fmt::print( "With input mult. level considered: \n" );
+						cut_view<xag_network> partial_c{ res, leaves, c_impl };
+						profile_partial_XAG( partial_c );
+						std::cout << std::endl;
+						std::cout << std::endl;
+						// abort();
+					}
+
 
 					if ( ps_.always_accept_exact_impl && c_m_depth != g_m_depth )
 					{
