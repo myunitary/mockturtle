@@ -34,6 +34,7 @@
 
 #include "../traits.hpp"
 #include "aig.hpp"
+#include "aqfp.hpp"
 #include "crossed.hpp"
 #include "mig.hpp"
 
@@ -344,9 +345,93 @@ public:
 
 #pragma region Restructuring
   // disable restructuring
-  std::optional<std::pair<node, signal>> replace_in_node( node const& n, node const& old_node, signal new_signal ) = delete;
-  void replace_in_outputs( node const& old_node, signal const& new_signal ) = delete;
-  void take_out_node( node const& n ) = delete;
+  void replace_in_node( node const& n, node const& old_node, signal new_signal )
+  {
+    assert( is_buf( old_node ) );
+    auto& node = _storage->nodes[n];
+
+    if ( is_buf( n ) )
+    {
+      assert( node.children[0].index == old_node );
+      new_signal.complement ^= node.children[0].weight;
+      node.children[0] = new_signal;
+      node.children[1] = !new_signal;
+      _storage->nodes[new_signal.index].data[0].h1++;
+      return;
+    }
+
+    uint32_t fanin = 3u;
+    for ( auto i = 0u; i < 3u; ++i )
+    {
+      if ( node.children[i].index == old_node )
+      {
+        fanin = i;
+        new_signal.complement ^= node.children[i].weight;
+        break;
+      }
+    }
+    assert( fanin < 3 );
+    signal child2 = new_signal;
+    signal child1 = node.children[( fanin + 1 ) % 3];
+    signal child0 = node.children[( fanin + 2 ) % 3];
+    if ( child0.index > child1.index )
+    {
+      std::swap( child0, child1 );
+    }
+    if ( child1.index > child2.index )
+    {
+      std::swap( child1, child2 );
+    }
+    if ( child0.index > child1.index )
+    {
+      std::swap( child0, child1 );
+    }
+
+    _storage->hash.erase( node );
+    node.children[0] = child0;
+    node.children[1] = child1;
+    node.children[2] = child2;
+    _storage->hash[node] = n;
+
+    // update the reference counter of the new signal
+    _storage->nodes[new_signal.index].data[0].h1++;
+  }
+  void replace_in_outputs( node const& old_node, signal const& new_signal )
+  {
+    assert( !is_dead( old_node ) );
+
+    for ( auto& output : _storage->outputs )
+    {
+      if ( output.index == old_node )
+      {
+        output.index = new_signal.index;
+        output.weight ^= new_signal.complement;
+
+        if ( old_node != new_signal.index )
+        {
+          // increment fan-in of new node
+          _storage->nodes[new_signal.index].data[0].h1++;
+        }
+      }
+    }
+  }
+  void take_out_node( node const& n )
+  {
+    assert( is_buf( n ) );
+
+    auto& nobj = _storage->nodes[n];
+    nobj.data[0].h1 = UINT32_C( 0x80000000 ); /* fanout size 0, but dead */
+
+    for ( auto const& fn : _events->on_delete )
+    {
+      ( *fn )( n );
+    }
+
+    if ( decr_fanout_size( nobj.children[0].index ) == 0 )
+    {
+      take_out_node( nobj.children[0].index );
+    }
+  }
   void substitute_node( node const& old_node, signal const& new_signal ) = delete;
   void substitute_nodes( std::list<std::pair<node, signal>> substitutions ) = delete;
 #pragma endregion
@@ -557,6 +642,289 @@ public:
   }
 #pragma endregion
 }; /* buffered_mig_network */
+
+class buffered_aqfp_network : public aqfp_network
+{
+public:
+  static constexpr bool is_buffered_network_type = true;
+
+#pragma region Primary I / O and constants
+  bool is_ci( node const& n ) const
+  {
+    if ( is_buf( n ) )
+      return false;
+
+    return _storage->nodes[n].children[0].data == _storage->nodes[n].children[1].data && _storage->nodes[n].children[0].data == _storage->nodes[n].children[2].data;
+  }
+
+  bool is_pi( node const& n ) const
+  {
+    if ( is_buf( n ) )
+      return false;
+
+    return _storage->nodes[n].children[0].data == ~static_cast<uint64_t>( 0 ) && _storage->nodes[n].children[1].data == ~static_cast<uint64_t>( 0 ) && _storage->nodes[n].children[2].data == ~static_cast<uint64_t>( 0 );
+  }
+#pragma endregion
+
+#pragma region Create unary functions
+  signal create_buf( signal const& a )
+  {
+    if ( is_constant( get_node( a ) ) )
+      return a;
+
+    const auto index = _storage->nodes.size();
+    auto& node = _storage->nodes.emplace_back();
+
+    node.children.resize( 1u );
+    node.children[0] = a;
+
+    /* increase ref-count to children */
+    _storage->nodes[a.index].data[0].h1++;
+
+    for ( auto const& fn : _events->on_add )
+    {
+      ( *fn )( index );
+    }
+
+    return { index, 0 };
+  }
+
+  void invert( node const& n )
+  {
+    assert( !is_constant( n ) && !is_pi( n ) );
+    assert( fanout_size( n ) == 0 );
+    for ( auto& s : _storage->nodes[n].children )
+    {
+      s.weight ^= 1;
+    }
+  }
+#pragma endregion
+
+#pragma region Create arbitrary functions
+  signal clone_node( aqfp_network const& other, node const& source, std::vector<signal> const& children )
+  {
+    (void)other;
+    (void)source;
+    assert( other.is_maj( source ) );
+    assert( children.size() > 1 && children.size() % 2 == 1 );
+    return create_maj( children );
+  }
+#pragma endregion
+
+#pragma region Structural properties
+  /* redefinition of num_gates counting the gates */
+  auto num_gates() const
+  {
+    uint32_t gate_count = 0;
+    foreach_gate( [&gate_count]( auto const& n ) {
+      ++gate_count;
+    } );
+    return gate_count;
+  }
+
+  bool is_buf( node const& n ) const
+  {
+    return _storage->nodes[n].children.size() == 1;
+  }
+
+  bool is_not( node const& n ) const
+  {
+    return _storage->nodes[n].children.size() == 1 && _storage->nodes[n].children[0].weight;
+  }
+
+  bool is_maj( node const& n ) const
+  {
+    return n > 0 && !is_ci( n ) && !is_buf( n );
+  }
+
+#pragma endregion
+
+#pragma region Functional properties
+  kitty::dynamic_truth_table node_function( const node& n ) const
+  {
+    if ( is_buf( n ) )
+    {
+      kitty::dynamic_truth_table _buf( 1 );
+      _buf._bits[0] = 0x2;
+      return _buf;
+    }
+
+    const auto num_fanin = _storage->nodes[n].children.size();
+
+    if ( num_fanin == 3u )
+    {
+      kitty::dynamic_truth_table _maj( 3u );
+      _maj._bits[0] = 0xe8;
+      return _maj;
+    }
+    else if ( num_fanin == 5u )
+    {
+      kitty::dynamic_truth_table _maj( 5u );
+      _maj._bits[0] = 0xfee8e880;
+      return _maj;
+    }
+    else
+    {
+      if ( _storage->data.node_fn_cache.count( num_fanin ) )
+      {
+        return _storage->data.node_fn_cache[num_fanin];
+      }
+
+      std::vector<std::vector<kitty::dynamic_truth_table>> dp;
+      for ( auto i = 0u; i <= num_fanin; i++ )
+      {
+        dp.push_back( { ~kitty::dynamic_truth_table( num_fanin ) } );
+        if ( i == 0u )
+          continue;
+        auto ith_var = kitty::nth_var<kitty::dynamic_truth_table>( num_fanin, i - 1 );
+        for ( auto j = 1u; j <= i && j <= ( num_fanin / 2 ) + 1; j++ )
+        {
+          dp[i].push_back( ( j < i ) ? ( ith_var & dp[i - 1][j - 1] ) | dp[i - 1][j] : ( ith_var & dp[i - 1][j - 1] ) );
+        }
+      }
+
+      return ( _storage->data.node_fn_cache[num_fanin] = dp[num_fanin][( num_fanin / 2 ) + 1] );
+    }
+  }
+#pragma endregion
+
+#pragma region Node and signal iterators
+  template<typename Fn>
+  void foreach_gate( Fn&& fn ) const
+  {
+    auto r = range<uint64_t>( 1u, _storage->nodes.size() ); /* start from 1 to avoid constant */
+    detail::foreach_element_if(
+        r.begin(), r.end(),
+        [this]( auto n ) { return !is_ci( n ) && !is_dead( n ) && !is_buf( n ); },
+        fn );
+  }
+
+  template<typename Fn>
+  void foreach_fanin( node const& n, Fn&& fn ) const
+  {
+    if ( n == 0 || is_ci( n ) )
+      return;
+
+    static_assert( detail::is_callable_without_index_v<Fn, signal, bool> ||
+                   detail::is_callable_with_index_v<Fn, signal, bool> ||
+                   detail::is_callable_without_index_v<Fn, signal, void> ||
+                   detail::is_callable_with_index_v<Fn, signal, void> );
+
+    if constexpr ( detail::is_callable_without_index_v<Fn, signal, bool> )
+    {
+      for ( auto i = 0u; i < _storage->nodes[n].children.size(); i++ )
+      {
+        if ( !fn( signal{ _storage->nodes[n].children[i] } ) )
+          return;
+      }
+    }
+    else if constexpr ( detail::is_callable_with_index_v<Fn, signal, bool> )
+    {
+      for ( auto i = 0u; i < _storage->nodes[n].children.size(); i++ )
+      {
+        if ( !fn( signal{ _storage->nodes[n].children[i] }, i ) )
+          return;
+      }
+    }
+    else if constexpr ( detail::is_callable_without_index_v<Fn, signal, void> )
+    {
+      for ( auto i = 0u; i < _storage->nodes[n].children.size(); i++ )
+      {
+        fn( signal{ _storage->nodes[n].children[i] } );
+      }
+    }
+    else if constexpr ( detail::is_callable_with_index_v<Fn, signal, void> )
+    {
+      for ( auto i = 0u; i < _storage->nodes[n].children.size(); i++ )
+      {
+        fn( signal{ _storage->nodes[n].children[i] }, i );
+      }
+    }
+  }
+#pragma endregion
+
+#pragma region Value simulation
+  template<typename Iterator>
+  iterates_over_t<Iterator, bool>
+  compute( node const& n, Iterator begin, Iterator end ) const
+  {
+    (void)end;
+
+    assert( n != 0 && !is_ci( n ) );
+
+    if ( is_buf( n ) )
+      return is_complemented( _storage->nodes[n].children[0] ) ? !( *begin ) : *begin;
+
+    std::vector<typename Iterator::value_type> v;
+    auto i = 0u;
+    for ( auto it = begin; it != end; it++, i++ )
+    {
+      v.push_back( ( *it ) ^ _storage->nodes[n].children[i].weight );
+    }
+    return compute_majority_n_with_bool( v.begin(), v.end() );
+  }
+
+  template<typename Iterator>
+  iterates_over_truth_table_t<Iterator>
+  compute( node const& n, Iterator begin, Iterator end ) const
+  {
+    (void)end;
+
+    assert( n != 0 && !is_ci( n ) );
+
+    if ( is_buf( n ) )
+      return is_complemented( _storage->nodes[n].children[0] ) ? ~( *begin ) : *begin;
+
+    std::vector<typename Iterator::value_type> v;
+    auto i = 0u;
+    for ( auto it = begin; it != end; it++, i++ )
+    {
+      v.push_back( _storage->nodes[n].children[i].weight ? ~( *it ) : ( *it ) );
+    }
+
+    return compute_majority_n( v.begin(), v.end() );
+  }
+
+  /*! \brief Re-compute the last block. */
+  template<typename Iterator>
+  void compute( node const& n, kitty::partial_truth_table& result, Iterator begin, Iterator end ) const
+  {
+    static_assert( iterates_over_v<Iterator, kitty::partial_truth_table>, "begin and end have to iterate over partial_truth_tables" );
+
+    (void)end;
+    assert( n != 0 && !is_ci( n ) );
+
+    if ( is_buf( n ) )
+    {
+      result.resize( begin->num_bits() );
+      result._bits.back() = is_complemented( _storage->nodes[n].children[0] ) ? ~( begin->_bits.back() ) : begin->_bits.back();
+      result.mask_bits();
+      return;
+    }
+
+    assert( begin->num_bits() > 0 && "truth tables must not be empty" );
+    for ( auto it = begin; it != end; it++ )
+    {
+      assert( begin->num_bits() == it->num_bits() );
+    }
+    assert( begin->num_bits() >= result.num_bits() );
+    assert( result.num_blocks() == begin->num_blocks() || ( result.num_blocks() == begin->num_blocks() - 1 && result.num_bits() % 64 == 0 ) );
+
+    result.resize( begin->num_bits() );
+
+    std::vector<uint64_t> v;
+    auto i = 0u;
+    for ( auto it = begin; it != end; it++, i++ )
+    {
+      v.push_back( _storage->nodes[n].children[i].weight ? ~( it->_bits.back() ) : ( it->_bits.back() ) );
+    }
+
+    result._bits.back() = compute_majority_n( v.begin(), v.end() );
+
+    result.mask_bits();
+  }
+#pragma endregion
+}; /* buffered_aqfp_network */
 
 class buffered_crossed_klut_network : public crossed_klut_network
 {
