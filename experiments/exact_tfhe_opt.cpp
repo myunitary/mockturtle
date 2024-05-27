@@ -13,44 +13,50 @@
 
 #include <experiments.hpp>
 
-static const uint32_t sota_md_epfl[] = {
-	12u, 4u, 523u, 104u, 26u, 65u, 62u, 951u, 20u, 
-	10u, 7u, 4u, 3u, 7u, 6u, 14u, 10u, 8u, 17u};
+static const uint32_t sota_md_pldi[] = {
+	8u, 8u, 36u, 36u, 36u, 20u, 6u, 6u, 5u,
+	8u, 7u, 7u, 3u, 5u, 10u, 5u, 15u, 15u,
+	11u, 10u, 5u, 3u, 8u, 8u, 10u
+};
 
-static const uint32_t sota_mc_epfl[] = {
-	2761u, 1303u, 120327u, 34133u, 7666u, 15138u, 6822u, 71587u, 10777u, 
-	5183u, 447u, 54u, 292u, 816u, 104u, 9983u, 522u, 116u, 3255u};
+static const uint32_t sota_mc_pldi[] = {
+	116u, 793u, 1450u, 1482u, 1482u, 1404u, 87u, 76u, 27u,
+	78u, 121u, 121u, 13u, 18u, 177u, 36u, 391u, 116u,
+	3015u, 668u, 120u, 304u, 1215u, 234u, 190u
+};
 
-std::vector<uint32_t> md_sota_epfl()
+std::vector<uint32_t> md_sota_pldi()
 {
 	std::vector<uint32_t> best_md;
-	for( auto i = 0u; i < 19u; ++i )
+	for( auto i = 0u; i < 25u; ++i )
 	{
-		best_md.emplace_back( sota_md_epfl[i] );
+		best_md.emplace_back( sota_md_pldi[i] );
 	}
 	return best_md;
 }
 
-std::vector<uint32_t> mc_sota_epfl()
+std::vector<uint32_t> mc_sota_pldi()
 {
 	std::vector<uint32_t> best_mc;
-	for( auto i = 0u; i < 19u; ++i )
+	for( auto i = 0u; i < 25u; ++i )
 	{
-		best_mc.emplace_back( sota_mc_epfl[i] );
+		best_mc.emplace_back( sota_mc_pldi[i] );
 	}
 	return best_mc;
 }
 
-static const std::string EPFL_benchmarks[] = {
-	"adder", "bar", "div", "log2", "max", "multiplier", "sin", "sqrt", "square", 
-	"arbiter", "cavlc", "ctrl" , "dec", "i2c", "int2float" , "mem_ctrl", "priority", "router", "voter"};
+static const std::string PLDI_benchmarks[] = {
+	"cardio", "dsort", "msort", "isort", "bsort", "osort", "hd01", "hd02", "hd03", 
+	"hd04", "hd05", "hd06", "hd07", "hd08", "hd09", "hd10", "hd11", "hd12",
+	"bar", "cavlc", "ctrl", "dec", "i2c", "int2float", "router"
+};
 
-std::vector<std::string> epfl_benchmarks()
+std::vector<std::string> pldi_benchmarks()
 {
 	std::vector<std::string> result;
-	for ( auto i = 0u; i < 19u; ++i )
+	for ( auto i = 0u; i < 25u; ++i )
 	{
-		result.emplace_back( EPFL_benchmarks[i] );
+		result.emplace_back( PLDI_benchmarks[i] );
 	}
 
 	return result;
@@ -58,7 +64,8 @@ std::vector<std::string> epfl_benchmarks()
 
 std::string benchmark_path( std::string const& benchmark_name )
 {
-	return fmt::format( "../experiments/epfl_tcad22/{}.v", benchmark_name );
+	// return fmt::format( "../experiments/epfl_tcad22/{}.v", benchmark_name );
+	return fmt::format( "../experiments/pldi_benchmarks/{}.v", benchmark_name );
 }
 
 template<class Ntk>
@@ -98,9 +105,9 @@ int main()
 	experiments::experiment<std::string, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, float, float, uint32_t, float, bool> exp_res( json_name, "benchmark", "MC before", "MC after", "MC best", "MD before", "MD after", "MD best", "improvement % (local)", "improvement % (global)", "iterations", "runtime [s]", "equivalent" );
 	// experiments::experiment<std::string, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, float, float, uint32_t, uint32_t, uint32_t, float, bool> exp_res( json_name, "benchmark", "MC before", "MC after", "MC best", "MD before", "MD after", "MD best", "improvement % (local)", "improvement % (global)", "iterations (R1)", "iterations (R2)", "iterations (R3)", "runtime [s]", "equivalent" );
 	// experiments::experiment<std::string, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, float, float, uint32_t, uint32_t, float, bool> exp_res( json_name, "benchmark", "MC before", "MC after", "MC best", "MD before", "MD after", "MD best", "improvement % (local)", "improvement % (global)", "iterations (R1)", "iterations (R2)", "runtime [s]", "equivalent" );
-	auto const benchmarks = epfl_benchmarks();
-	std::vector<uint32_t> const best_md = md_sota_epfl();
-	std::vector<uint32_t> const best_mc = mc_sota_epfl();
+	auto const benchmarks = pldi_benchmarks();
+	std::vector<uint32_t> const best_md = md_sota_pldi();
+	std::vector<uint32_t> const best_mc = mc_sota_pldi();
 	float time_opt{ 0.0f };
 
 	mockturtle::exact_tfhe_opt_agent_params agent_ps;

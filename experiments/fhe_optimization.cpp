@@ -2,6 +2,7 @@
 #include <ctime>
 #include <iostream>
 
+#include <bill/sat/interface/abc_bsat2.hpp>
 #include <bill/sat/interface/glucose.hpp>
 #include <mockturtle/algorithms/balancing.hpp>
 #include <mockturtle/algorithms/balancing/esop_balancing.hpp>
@@ -14,6 +15,10 @@
 #include <mockturtle/io/write_verilog.hpp>
 #include <mockturtle/utils/cost_functions.hpp>
 #include <mockturtle/views/depth_view.hpp>
+
+#if defined( BILL_HAS_Z3 )
+#include <bill/sat/interface/z3.hpp>
+#endif
 
 #include <experiments.hpp>
 
@@ -177,7 +182,8 @@ int main()
 	// std::string json_name = "fhe_optimization_pldi_exact";
 	// std::string json_name = "fhe_optimization_pldi_esop_test";
 	// std::string json_name = "fhe_optimization_pldi_hybrid_5_restart_md_target";
-	// experiments::experiment<std::string, uint32_t, uint32_t, uint32_t, uint32_t, float, uint32_t, float, bool> exp_res( json_name, "benchmark", "MD best", "MC best", "MD after", "MC after", "improvement %", "#ite_ctr", "runtime [s]", "equivalent" );
+	std::string json_name = "fhe_optimization";
+	experiments::experiment<std::string, uint32_t, uint32_t, uint32_t, uint32_t, float, uint32_t, float, bool> exp_res( json_name, "benchmark", "MD best", "MC best", "MD after", "MC after", "improvement %", "#ite_ctr", "runtime [s]", "equivalent" );
 	// experiments::experiment<std::string, uint32_t, uint32_t, uint32_t, uint32_t, float, uint32_t, uint32_t, std::vector<uint8_t>, float, bool> exp_res( json_name, "benchmark", "MD best", "MC best", "MD after", "MC after", "improvement %", "#ite_ctr_rewrite", "#ite_ctr_esop", "script", "runtime [s]", "equivalent" );
 	// auto const benchmarks = epfl_benchmarks();
 	// std::vector<uint32_t> const best_md = md_sota_epfl();
@@ -193,16 +199,17 @@ int main()
 	mockturtle::fhe_optimization_database g_local_opt_fn{ "db_fhe_5", g_local_opt_fn_ps, &g_local_opt_fn_st };
 
 	mockturtle::fhe_optimization_exact_syn_params cm_local_opt_fn_ps;
-	cm_local_opt_fn_ps.verbose = true;
-	cm_local_opt_fn_ps.verify_solution = true;
+	cm_local_opt_fn_ps.verbose = false;
+	cm_local_opt_fn_ps.verify_solution = false;
 	cm_local_opt_fn_ps.use_advanced_constraints = false;
 	cm_local_opt_fn_ps.use_exisiting_cache = false;
 	mockturtle::fhe_optimization_exact_syn_stats cm_local_opt_fn_st;
-	mockturtle::fhe_optimization_exact_syn<bill::solvers::glucose_41> cm_local_opt_fn{ cm_local_opt_fn_ps, &cm_local_opt_fn_st };
+	// mockturtle::fhe_optimization_exact_syn<bill::solvers::glucose_41> cm_local_opt_fn{ cm_local_opt_fn_ps, &cm_local_opt_fn_st };
+	mockturtle::fhe_optimization_exact_syn<bill::solvers::bsat2> cm_local_opt_fn{ cm_local_opt_fn_ps, &cm_local_opt_fn_st };
 
-	// for ( auto i{ 0u }; i < benchmarks.size(); ++i )
-	uint8_t target = 2u;
-	for ( auto i{ target }; i <= target; ++i )
+	for ( auto i{ 0u }; i < benchmarks.size(); ++i )
+	// uint8_t target = 2u;
+	// for ( auto i{ target }; i <= target; ++i )
 	{
 		auto const benchmark = benchmarks[i];
 		fmt::print( "[i] processing {}\n", benchmark );
@@ -574,13 +581,13 @@ int main()
 
 		// float improve_local = ( ( static_cast<float>( fhe_cost( mc_init, md_init ) ) - static_cast<float>( fhe_cost( mc_after, md_after ) ) ) ) / static_cast<float>( fhe_cost( mc_init, md_init ) ) * 100;
 		float improve_global = ( ( static_cast<float>( fhe_cost( mc_best, md_best ) ) - static_cast<float>( fhe_cost( mc_after, md_after ) ) ) ) / static_cast<float>( fhe_cost( mc_best, md_best ) ) * 100;
-		// exp_res( benchmark, md_best, mc_best, md_after, mc_after, improve_global, ite_ctr, time_opt, is_eq );
+		exp_res( benchmark, md_best, mc_best, md_after, mc_after, improve_global, ite_ctr, time_opt, is_eq );
 		// exp_res( benchmark, md_best, mc_best, md_after, mc_after, improve_global, ite_ctr_rewrite, ite_ctr_esop, script_tmp, time_opt, is_eq );
 		// mockturtle::write_verilog( xag, ( "../experiments/benchmarks/fhe_opt_pldi_exact/" + benchmark + ".v" ) );
 		// mockturtle::write_verilog( xag, ( "../experiments/benchmarks/fhe_opt_pldi_esop/" + benchmark + ".v" ) );
 		// mockturtle::write_verilog( xag, ( "../experiments/benchmarks/fhe_opt_pldi_hybrid/restart_md/" + benchmark + ".v" ) );
 	}
 
-	// exp_res.save();
-	// exp_res.table();
+	exp_res.save();
+	exp_res.table();
 }

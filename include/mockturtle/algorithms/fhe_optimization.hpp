@@ -229,35 +229,35 @@ struct fhe_optimization_impl
 
 
 					/* for generating example */
-					if ( c_m_depth != g_m_depth && ( pcut->size() == 4u ) )
-					{
-						fmt::print( "Boolean function : {}\n", kitty::to_binary( cuts.truth_table( *pcut ) ) );
-						std::cout << "Input mult. level : ";
-						std::vector<xag_network::signal> leaves;
-						for ( auto const& arrival_time_p : arrival_times )
-						{
-							leaves.emplace_back( arrival_time_p.f );
-							std::cout << arrival_time_p.m_depth << " ";
-						}
-						std::cout << std::endl;
-						std::cout << "Leaves : ";
-						for ( auto const& leaf : leaves )
-						{
-							std::cout << "Node " << leaf.index << " ";
-						}
-						std::cout << std::endl;
-						fmt::print( "G_MD : {}; C_MD : {}\n", g_m_depth, c_m_depth );
-						std::cout << "Without input mult. level considered : \n";
-						cut_view<xag_network> partial{ res, leaves, g_impl_f };
-						profile_partial_XAG( partial );
+					// if ( c_m_depth != g_m_depth && ( pcut->size() == 4u ) )
+					// {
+					// 	fmt::print( "Boolean function : {}\n", kitty::to_binary( cuts.truth_table( *pcut ) ) );
+					// 	std::cout << "Input mult. level : ";
+					// 	std::vector<xag_network::signal> leaves;
+					// 	for ( auto const& arrival_time_p : arrival_times )
+					// 	{
+					// 		leaves.emplace_back( arrival_time_p.f );
+					// 		std::cout << arrival_time_p.m_depth << " ";
+					// 	}
+					// 	std::cout << std::endl;
+					// 	std::cout << "Leaves : ";
+					// 	for ( auto const& leaf : leaves )
+					// 	{
+					// 		std::cout << "Node " << leaf.index << " ";
+					// 	}
+					// 	std::cout << std::endl;
+					// 	fmt::print( "G_MD : {}; C_MD : {}\n", g_m_depth, c_m_depth );
+					// 	std::cout << "Without input mult. level considered : \n";
+					// 	cut_view<xag_network> partial{ res, leaves, g_impl_f };
+					// 	profile_partial_XAG( partial );
 
-						fmt::print( "With input mult. level considered: \n" );
-						cut_view<xag_network> partial_c{ res, leaves, c_impl };
-						profile_partial_XAG( partial_c );
-						std::cout << std::endl;
-						std::cout << std::endl;
-						// abort();
-					}
+					// 	fmt::print( "With input mult. level considered: \n" );
+					// 	cut_view<xag_network> partial_c{ res, leaves, c_impl };
+					// 	profile_partial_XAG( partial_c );
+					// 	std::cout << std::endl;
+					// 	std::cout << std::endl;
+					// 	// abort();
+					// }
 
 
 					if ( ps_.always_accept_exact_impl && c_m_depth != g_m_depth )
