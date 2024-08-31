@@ -78,6 +78,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
+#include <cstdint>
 
 // catch memory leaks in Visual Studio
 #ifdef WIN32
@@ -132,7 +133,7 @@ typedef unsigned long ABC_PTRUINT_T;
 #elif     defined(NT64)
 typedef unsigned long long ABC_PTRUINT_T;
 #elif     defined(NT) || defined(LIN) || defined(WIN32)
-typedef unsigned int ABC_PTRUINT_T;
+typedef uintptr_t ABC_PTRUINT_T;
 #else
    #error unknown platform
 #endif /* defined(PLATFORM) */
@@ -149,7 +150,7 @@ typedef long ABC_PTRINT_T;
 #elif     defined(NT64)
 typedef long long ABC_PTRINT_T;
 #elif     defined(NT) || defined(LIN) || defined(WIN32)
-typedef int ABC_PTRINT_T;
+typedef intptr_t ABC_PTRINT_T;
 #else
    #error unknown platform
 #endif /* defined(PLATFORM) */
