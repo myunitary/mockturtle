@@ -1,6 +1,7 @@
 #include <mockturtle/algorithms/and_forest_exact_synthesis.hpp>
 #include <mockturtle/io/write_verilog.hpp>
 #include <mockturtle/networks/xag.hpp>
+#include <mockturtle/networks/aig.hpp>
 #include <iostream>
 #include <string_view>
 
@@ -40,8 +41,9 @@ int main()
     ps.solving_mode = current_mode;
 
     mockturtle::and_forest_exact_syn_stats st;
-    const mockturtle::xag_network ntk = mockturtle::and_forest_exact_synthesis( ps, &st );
-    std::string filename = fmt::format( "benchmarks/and_forest_{0}_{1}.v", ps.num_vars, get_mode_name( ps.solving_mode ) );
+    // const mockturtle::xag_network ntk = mockturtle::and_forest_exact_synthesis( ps, &st );
+    const mockturtle::aig_network ntk = mockturtle::and_forest_exact_synthesis<mockturtle::aig_network, bill::solvers::bsat2>( ps, &st );
+    std::string filename = fmt::format( "benchmarks/aig_and_forest_{0}_{1}.v", ps.num_vars, get_mode_name( ps.solving_mode ) );
     mockturtle::write_verilog( ntk, filename );
   }
   return 0;
