@@ -13,8 +13,13 @@ v0.4 (not yet released)
     - Move `trav_id` from the custom storage data (e.g. `aig_storage_data`) to the common `storage`. Remove `num_pis` and `num_pos` as they are only needed for sequential network. Remove custom storage data when not needed (`aig_storage_data`, `xag_storage_data`, `mig_storage_data`, `xmg_storage_data`). Remove latch information from the common `storage`. `#564 <https://github.com/lsils/mockturtle/pull/564>`_
     - Add access methods to check if a node is present in the network given its immediate fanin (e.g., `has_and` in `aig_network`) `#580 <https://github.com/lsils/mockturtle/pull/580>`_
     - Crossed networks (`crossed_klut_network` and `buffered_crossed_klut_network`) `#589 <https://github.com/lsils/mockturtle/pull/589>`_
+    - Generic network implementation with additional node types (`generic_network`) `#594 <https://github.com/lsils/mockturtle/pull/594>`_
+    - Adding `substitute_node_no_restrash` to `aig_network`, `xag_network`, `mig_network`, `xmg_network`, and `fanout_view` to substitute nodes without structural hashing and simplifications `#616 <https://github.com/lsils/mockturtle/pull/616>`_
+    - Adding `replace_in_node_no_restrash` to `aig_network`, `xag_network`, `mig_network`, and `xmg_network` to replace a fanin without structural hashing and simplifications `#616 <https://github.com/lsils/mockturtle/pull/616>`_
+    - Adding a new network type to represent multi-output gates (`block_network`) `#623 <https://github.com/lsils/mockturtle/pull/623>`_
 * Algorithms:
     - AIG balancing (`aig_balance`) `#580 <https://github.com/lsils/mockturtle/pull/580>`_
+    - AIG resubstitution (`aig_resubstitution2`) `#658 <https://github.com/lsils/mockturtle/pull/658>`_
     - Cost-generic resubstitution (`cost_generic_resub`) `#554 <https://github.com/lsils/mockturtle/pull/554>`_
     - Cost aware resynthesis solver (`cost_resyn`) `#554 <https://github.com/lsils/mockturtle/pull/554>`_
     - Resynthesis based on SOP factoring (`sop_factoring`) `#579 <https://github.com/lsils/mockturtle/pull/579>`_
@@ -22,15 +27,38 @@ v0.4 (not yet released)
     - Collapse mapped extended to compute mapping functions if the mapped network doesn't have them stored (`collapse_mapped`) `#581 <https://github.com/lsils/mockturtle/pull/581>`_
     - Extended LUT mapping for delay and area (`lut_map`) `#581 <https://github.com/lsils/mockturtle/pull/581>`_
     - Support for external don't cares (mainly in `circuit_validator`, `sim_resub`, `miter` and `equivalence_checking_bill`) `#585 <https://github.com/lsils/mockturtle/pull/585>`_
+    - Register retiming (`retime`) `#594 <https://github.com/lsils/mockturtle/pull/594>`_
+    - AQFP buffer insertion & optimization updates (`buffer_insertion`, `aqfp_retiming`) `#594 <https://github.com/lsils/mockturtle/pull/594>`_
+    - Mapping of sequential networks (`map`, `seq_map`) `#599 <https://github.com/lsils/mockturtle/pull/599>`_
+    - DAG-aware in-place rewriting (`rewrite`) `#605 <https://github.com/lsils/mockturtle/pull/605>`_
+    - Dynamic cut enumeration (`dynamic_cut_enumeration_impl`) `#605 <https://github.com/lsils/mockturtle/pull/605>`_
+    - Extensions and fixes in refactoring (`refactoring`) `#607 <https://github.com/lsils/mockturtle/pull/607>`_
+    - Improving LUT mapping, changing its interface, and integrating SOP/ESOP balancing (`lut_map`) `#616 <https://github.com/lsils/mockturtle/pull/616>`_
+    - Adding LUT-based SOP and ESOP balancing (`sop_balancing`, `esop_balancing`) `#616 <https://github.com/lsils/mockturtle/pull/616>`_
+    - Adding a new technology mapper supporting multi-output cells (`emap`) `#623 <https://github.com/lsils/mockturtle/pull/623>`_
+    - Adding circuit extraction of half and full adders (`extract_adders`) `#623 <https://github.com/lsils/mockturtle/pull/623>`_
+    - Adding don't care support in rewriting (`map`, `rewrite`) `#623 <https://github.com/lsils/mockturtle/pull/623>`_
+    - XAG balancing (`xag_balance`) `#627 <https://github.com/lsils/mockturtle/pull/627>`_
+    - XAG resubstitution (`xag_resubstitution`) `#658 <https://github.com/lsils/mockturtle/pull/658>`_
+* I/O:
+    - Write gates to GENLIB file (`write_genlib`) `#606 <https://github.com/lsils/mockturtle/pull/606>`_
 * Views:
     - Add cost view to evaluate costs in the network and to maintain contexts (`cost_view`) `#554 <https://github.com/lsils/mockturtle/pull/554>`_
     - Support for external don't cares (`dont_care_view`) `#585 <https://github.com/lsils/mockturtle/pull/585>`_
     - Rank view for management of the ordering of nodes within each level (`rank_view`, contributed by Marcel Walter) `#589 <https://github.com/lsils/mockturtle/pull/589>`_
+    - Choice view for management of equivalent classes (`choice_view`) `#594 <https://github.com/lsils/mockturtle/pull/594>`_
+    - Deterministic randomization option in topological sorting (`topo_view`) `#594 <https://github.com/lsils/mockturtle/pull/594>`_
+    - Fixing MFFC view (`mffc_view`) `#607 <https://github.com/lsils/mockturtle/pull/607>`_
+    - Adding a view to represent standard cells including the multi-output ones (`cell_view`) `#623 <https://github.com/lsils/mockturtle/pull/623>`_
+    - Adding a view to mark nodes as don't touch elements (`dont_touch_view`) `#623 <https://github.com/lsils/mockturtle/pull/623>`_
 * Properties:
     - Cost functions based on the factored form literals count (`factored_literal_cost`) `#579 <https://github.com/lsils/mockturtle/pull/579>`_
 * Utils:
     - Add recursive cost function class to customize cost in resubstitution algorithm (`recursive_cost_function`) `#554 <https://github.com/lsils/mockturtle/pull/554>`_
     - Sum-of-products factoring utilities `#579 <https://github.com/lsils/mockturtle/pull/579>`_
+    - Adding utils to perform pattern matching and derive patterns from standard cells (`struct_library`) `#623 <https://github.com/lsils/mockturtle/pull/623>`_
+    - Adding Boolean matching for multi-output cells (`tech_library`) `#623 <https://github.com/lsils/mockturtle/pull/623>`_
+    - Adding Boolean matching with don't cares for databases (`exact_library`) `#623 <https://github.com/lsils/mockturtle/pull/623>`_
 
 v0.3 (July 12, 2022)
 --------------------

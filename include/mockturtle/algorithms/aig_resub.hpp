@@ -27,6 +27,7 @@
   \file aig_resub.hpp
   \brief Resubstitution
 
+  \author Alessandro Tempia Calvino
   \author Eleonora Testa
   \author Heinz Riener
   \author Mathias Soeken
@@ -36,7 +37,10 @@
 #pragma once
 
 #include "../networks/aig.hpp"
+#include "../utils/index_list.hpp"
+#include "../utils/truth_table_utils.hpp"
 #include "resubstitution.hpp"
+#include "resyn_engines/xag_resyn.hpp"
 
 namespace mockturtle
 {
@@ -179,14 +183,14 @@ public:
   {
   }
 
-  std::optional<signal> operator()( node const& root, TT care, uint32_t required, uint32_t max_inserts, uint32_t num_mffc, uint32_t& last_gain )
+  std::optional<signal> operator()( node const& root, TT care, uint32_t max_depth, uint32_t max_inserts, uint32_t num_mffc, uint32_t& last_gain )
   {
     (void)care;
     assert( is_const0( ~care ) );
 
     /* consider constants */
     auto g = call_with_stopwatch( st.time_resubC, [&]() {
-      return resub_const( root, required );
+      return resub_const( root );
     } );
     if ( g )
     {
@@ -197,7 +201,7 @@ public:
 
     /* consider equal nodes */
     g = call_with_stopwatch( st.time_resub0, [&]() {
-      return resub_div0( root, required );
+      return resub_div0( root, max_depth );
     } );
     if ( g )
     {
@@ -211,12 +215,12 @@ public:
 
     /* collect level one divisors */
     call_with_stopwatch( st.time_collect_unate_divisors, [&]() {
-      collect_unate_divisors( root, required );
+      collect_unate_divisors( root, max_depth );
     } );
 
     /* consider equal nodes */
     g = call_with_stopwatch( st.time_resub1, [&]() {
-      return resub_div1( root, required );
+      return resub_div1( root, max_depth );
     } );
     if ( g )
     {
@@ -229,7 +233,7 @@ public:
       return std::nullopt;
 
     /* consider triples */
-    g = call_with_stopwatch( st.time_resub12, [&]() { return resub_div12( root, required ); } );
+    g = call_with_stopwatch( st.time_resub12, [&]() { return resub_div12( root, max_depth ); } );
     if ( g )
     {
       ++st.num_div12_accepts;
@@ -239,11 +243,11 @@ public:
 
     /* collect level two divisors */
     call_with_stopwatch( st.time_collect_binate_divisors, [&]() {
-      collect_binate_divisors( root, required );
+      collect_binate_divisors( root, max_depth );
     } );
 
     /* consider two nodes */
-    g = call_with_stopwatch( st.time_resub2, [&]() { return resub_div2( root, required ); } );
+    g = call_with_stopwatch( st.time_resub2, [&]() { return resub_div2( root, max_depth ); } );
     if ( g )
     {
       ++st.num_div2_accepts;
@@ -255,7 +259,7 @@ public:
       return std::nullopt;
 
     /* consider three nodes */
-    g = call_with_stopwatch( st.time_resub3, [&]() { return resub_div3( root, required ); } );
+    g = call_with_stopwatch( st.time_resub3, [&]() { return resub_div3( root, max_depth ); } );
     if ( g )
     {
       ++st.num_div3_accepts;
@@ -266,9 +270,8 @@ public:
     return std::nullopt;
   }
 
-  std::optional<signal> resub_const( node const& root, uint32_t required ) const
+  std::optional<signal> resub_const( node const& root ) const
   {
-    (void)required;
     auto const tt = sim.get_tt( ntk.make_signal( root ) );
     if ( tt == sim.get_tt( ntk.get_constant( false ) ) )
     {
@@ -277,9 +280,9 @@ public:
     return std::nullopt;
   }
 
-  std::optional<signal> resub_div0( node const& root, uint32_t required ) const
+  std::optional<signal> resub_div0( node const& root, uint32_t max_depth ) const
   {
-    (void)required;
+    (void)max_depth;
     auto const tt = sim.get_tt( ntk.make_signal( root ) );
     for ( auto i = 0u; i < num_divs; ++i )
     {
@@ -287,13 +290,14 @@ public:
       if ( tt != sim.get_tt( ntk.make_signal( d ) ) )
         continue; /* next */
 
+      assert( ntk.level( d ) <= max_depth );
       return ( sim.get_phase( d ) ^ sim.get_phase( root ) ) ? !ntk.make_signal( d ) : ntk.make_signal( d );
     }
 
     return std::nullopt;
   }
 
-  void collect_unate_divisors( node const& root, uint32_t required )
+  void collect_unate_divisors( node const& root, uint32_t max_depth )
   {
     udivs.clear();
 
@@ -302,7 +306,7 @@ public:
     {
       auto const d = divs.at( i );
 
-      if ( ntk.level( d ) > required - 1 )
+      if ( ntk.level( d ) > max_depth - 1 )
         continue;
 
       auto const& tt_d = sim.get_tt( ntk.make_signal( d ) );
@@ -340,9 +344,9 @@ public:
     }
   }
 
-  std::optional<signal> resub_div1( node const& root, uint32_t required )
+  std::optional<signal> resub_div1( node const& root, uint32_t max_depth )
   {
-    (void)required;
+    (void)max_depth;
     auto const& tt = sim.get_tt( ntk.make_signal( root ) );
 
     /* check for positive unate divisors */
@@ -362,6 +366,7 @@ public:
           ++st.num_div1_or_accepts;
           auto const l = sim.get_phase( ntk.get_node( s0 ) ) ? !s0 : s0;
           auto const r = sim.get_phase( ntk.get_node( s1 ) ) ? !s1 : s1;
+          assert( ntk.level( ntk.get_node( l ) ) <= max_depth - 1 && ntk.level( ntk.get_node( r ) ) <= max_depth - 1 );
           return sim.get_phase( root ) ? !ntk.create_or( l, r ) : ntk.create_or( l, r );
         }
       }
@@ -384,6 +389,7 @@ public:
           ++st.num_div1_and_accepts;
           auto const l = sim.get_phase( ntk.get_node( s0 ) ) ? !s0 : s0;
           auto const r = sim.get_phase( ntk.get_node( s1 ) ) ? !s1 : s1;
+          assert( ntk.level( ntk.get_node( l ) ) <= max_depth - 1 && ntk.level( ntk.get_node( r ) ) <= max_depth - 1 );
           return sim.get_phase( root ) ? !ntk.create_and( l, r ) : ntk.create_and( l, r );
         }
       }
@@ -392,9 +398,8 @@ public:
     return std::nullopt;
   }
 
-  std::optional<signal> resub_div12( node const& root, uint32_t required )
+  std::optional<signal> resub_div12( node const& root, uint32_t max_depth )
   {
-    (void)required;
     auto const s = ntk.make_signal( root );
     auto const& tt = sim.get_tt( s );
 
@@ -420,7 +425,7 @@ public:
             auto const max_level = std::max( { ntk.level( ntk.get_node( s0 ) ),
                                                ntk.level( ntk.get_node( s1 ) ),
                                                ntk.level( ntk.get_node( s2 ) ) } );
-            assert( max_level <= required - 1 );
+            assert( max_level <= max_depth - 1 );
 
             signal max = s0;
             signal min0 = s1;
@@ -437,6 +442,9 @@ public:
               min0 = s0;
               min1 = s1;
             }
+
+            if ( ntk.level( ntk.get_node( min0 ) ) > max_level - 2 || ntk.level( ntk.get_node( min1 ) ) > max_level - 2 )
+              continue;
 
             auto const a = sim.get_phase( ntk.get_node( max ) ) ? !max : max;
             auto const b = sim.get_phase( ntk.get_node( min0 ) ) ? !min0 : min0;
@@ -471,7 +479,7 @@ public:
             auto const max_level = std::max( { ntk.level( ntk.get_node( s0 ) ),
                                                ntk.level( ntk.get_node( s1 ) ),
                                                ntk.level( ntk.get_node( s2 ) ) } );
-            assert( max_level <= required - 1 );
+            assert( max_level <= max_depth - 1 );
 
             signal max = s0;
             signal min0 = s1;
@@ -489,6 +497,9 @@ public:
               min1 = s1;
             }
 
+            if ( ntk.level( ntk.get_node( min0 ) ) > max_level - 2 || ntk.level( ntk.get_node( min1 ) ) > max_level - 2 )
+              continue;
+
             auto const a = sim.get_phase( ntk.get_node( max ) ) ? !max : max;
             auto const b = sim.get_phase( ntk.get_node( min0 ) ) ? !min0 : min0;
             auto const c = sim.get_phase( ntk.get_node( min1 ) ) ? !min1 : min1;
@@ -503,7 +514,7 @@ public:
     return std::nullopt;
   }
 
-  void collect_binate_divisors( node const& root, uint32_t required )
+  void collect_binate_divisors( node const& root, uint32_t max_depth )
   {
     bdivs.clear();
 
@@ -511,13 +522,13 @@ public:
     for ( auto i = 0u; i < udivs.next_candidates.size(); ++i )
     {
       auto const& s0 = udivs.next_candidates.at( i );
-      if ( ntk.level( ntk.get_node( s0 ) ) > required - 2 )
+      if ( ntk.level( ntk.get_node( s0 ) ) > max_depth - 2 )
         continue;
 
       for ( auto j = i + 1; j < udivs.next_candidates.size(); ++j )
       {
         auto const& s1 = udivs.next_candidates.at( j );
-        if ( ntk.level( ntk.get_node( s1 ) ) > required - 2 )
+        if ( ntk.level( ntk.get_node( s1 ) ) > max_depth - 2 )
           continue;
 
         if ( bdivs.positive_divisors0.size() < 500 ) // ps.max_divisors2
@@ -581,9 +592,9 @@ public:
     }
   }
 
-  std::optional<signal> resub_div2( node const& root, uint32_t required )
+  std::optional<signal> resub_div2( node const& root, uint32_t max_depth )
   {
-    (void)required;
+    (void)max_depth;
     auto const s = ntk.make_signal( root );
     auto const& tt = sim.get_tt( s );
 
@@ -607,6 +618,8 @@ public:
         if ( ( tt_s0 | ( tt_s1 & tt_s2 ) ) == tt )
         {
           ++st.num_div2_or_and_accepts;
+          assert( ntk.level( ntk.get_node( a ) ) <= max_depth - 1 );
+          assert( ntk.level( ntk.get_node( b ) ) <= max_depth - 2 && ntk.level( ntk.get_node( c ) ) <= max_depth - 2 );
           return sim.get_phase( root ) ? !ntk.create_or( a, ntk.create_and( b, c ) ) : ntk.create_or( a, ntk.create_and( b, c ) );
         }
       }
@@ -632,6 +645,8 @@ public:
         if ( ( tt_s0 | ( tt_s1 & tt_s2 ) ) == tt )
         {
           ++st.num_div2_or_and_accepts;
+          assert( ntk.level( ntk.get_node( a ) ) <= max_depth - 1 );
+          assert( ntk.level( ntk.get_node( b ) ) <= max_depth - 2 && ntk.level( ntk.get_node( c ) ) <= max_depth - 2 );
           return sim.get_phase( root ) ? !ntk.create_and( a, ntk.create_or( b, c ) ) : ntk.create_and( a, ntk.create_or( b, c ) );
         }
       }
@@ -640,10 +655,9 @@ public:
     return std::nullopt;
   }
 
-  std::optional<signal> resub_div3( node const& root, uint32_t required )
+  std::optional<signal> resub_div3( node const& root, uint32_t max_depth )
   {
-    (void)required;
-
+    (void)max_depth;
     auto const s = ntk.make_signal( root );
     auto const& tt = sim.get_tt( s );
 
@@ -670,6 +684,8 @@ public:
           auto const d = sim.get_phase( ntk.get_node( s3 ) ) ? !s3 : s3;
 
           ++st.num_div3_and_2or_accepts;
+          assert( ntk.level( ntk.get_node( a ) ) <= max_depth - 2 && ntk.level( ntk.get_node( b ) ) <= max_depth - 2 );
+          assert( ntk.level( ntk.get_node( c ) ) <= max_depth - 2 && ntk.level( ntk.get_node( d ) ) <= max_depth - 2 );
           return sim.get_phase( root ) ? !ntk.create_and( ntk.create_or( a, b ), ntk.create_or( c, d ) ) : ntk.create_and( ntk.create_or( a, b ), ntk.create_or( c, d ) );
         }
       }
@@ -698,6 +714,8 @@ public:
           auto const d = sim.get_phase( ntk.get_node( s3 ) ) ? !s3 : s3;
 
           ++st.num_div3_or_2and_accepts;
+          assert( ntk.level( ntk.get_node( a ) ) <= max_depth - 2 && ntk.level( ntk.get_node( b ) ) <= max_depth - 2 );
+          assert( ntk.level( ntk.get_node( c ) ) <= max_depth - 2 && ntk.level( ntk.get_node( d ) ) <= max_depth - 2 );
           return sim.get_phase( root ) ? !ntk.create_or( ntk.create_and( a, b ), ntk.create_and( c, d ) ) : ntk.create_or( ntk.create_and( a, b ), ntk.create_and( c, d ) );
         }
       }
@@ -716,6 +734,90 @@ private:
   unate_divisors udivs;
   binate_divisors bdivs;
 }; /* aig_resub_functor */
+
+struct aig_resyn_resub_stats
+{
+  /*! \brief Time for finding dependency function. */
+  stopwatch<>::duration time_compute_function{ 0 };
+
+  /*! \brief Number of found solutions. */
+  uint32_t num_success{ 0 };
+
+  /*! \brief Number of times that no solution can be found. */
+  uint32_t num_fail{ 0 };
+
+  void report() const
+  {
+    fmt::print( "[i]     <ResubFn: aig_resyn_functor>\n" );
+    fmt::print( "[i]         #solution = {:6d}\n", num_success );
+    fmt::print( "[i]         #invoke   = {:6d}\n", num_success + num_fail );
+    fmt::print( "[i]         engine time: {:>5.2f} secs\n", to_seconds( time_compute_function ) );
+  }
+}; /* aig_resyn_resub_stats */
+
+/*! \brief Interfacing resubstitution functor with AIG resynthesis engines for `window_based_resub_engine`.
+ */
+template<typename Ntk, typename Simulator, typename TTcare, typename ResynEngine = xag_resyn_decompose<typename Simulator::truthtable_t, aig_resyn_static_params_for_win_resub<Ntk>>>
+struct aig_resyn_functor
+{
+public:
+  using node = aig_network::node;
+  using signal = aig_network::signal;
+  using stats = aig_resyn_resub_stats;
+  using TT = typename ResynEngine::truth_table_t;
+
+  static_assert( std::is_same_v<TT, typename Simulator::truthtable_t>, "truth table type of the simulator does not match" );
+
+public:
+  explicit aig_resyn_functor( Ntk& ntk, Simulator const& sim, std::vector<node> const& divs, uint32_t num_divs, stats& st )
+      : ntk( ntk ), sim( sim ), tts( ntk ), divs( divs ), st( st )
+  {
+    assert( divs.size() == num_divs );
+    (void)num_divs;
+    div_signals.reserve( divs.size() );
+  }
+
+  std::optional<signal> operator()( node const& root, TTcare care, uint32_t required, uint32_t max_inserts, uint32_t potential_gain, uint32_t& real_gain )
+  {
+    (void)required;
+    TT target = sim.get_tt( sim.get_phase( root ) ? !ntk.make_signal( root ) : ntk.make_signal( root ) );
+    TT care_transformed = target.construct();
+    care_transformed = care;
+
+    typename ResynEngine::stats st_eng;
+    ResynEngine engine( st_eng );
+    for ( auto const& d : divs )
+    {
+      div_signals.emplace_back( sim.get_phase( d ) ? !ntk.make_signal( d ) : ntk.make_signal( d ) );
+      tts[d] = sim.get_tt( ntk.make_signal( d ) );
+    }
+
+    auto const res = call_with_stopwatch( st.time_compute_function, [&]() {
+      return engine( target, care_transformed, std::begin( divs ), std::end( divs ), tts, std::min( potential_gain - 1, max_inserts ) );
+    } );
+    if ( res )
+    {
+      ++st.num_success;
+      signal ret;
+      real_gain = potential_gain - ( *res ).num_gates();
+      insert( ntk, div_signals.begin(), div_signals.end(), *res, [&]( signal const& s ) { ret = s; } );
+      return ret;
+    }
+    else
+    {
+      ++st.num_fail;
+      return std::nullopt;
+    }
+  }
+
+private:
+  Ntk& ntk;
+  Simulator const& sim;
+  unordered_node_map<TT, Ntk> tts;
+  std::vector<node> const& divs;
+  std::vector<signal> div_signals;
+  stats& st;
+}; /* aig_resyn_functor */
 
 template<class Ntk>
 void aig_resubstitution( Ntk& ntk, resubstitution_params const& ps = {}, resubstitution_stats* pst = nullptr )
@@ -792,6 +894,92 @@ void aig_resubstitution( Ntk& ntk, resubstitution_params const& ps = {}, resubst
     {
       *pst = st;
     }
+  }
+}
+
+/*! \brief AIG-specific resubstitution algorithm.
+ *
+ * This algorithms iterates over each node, creates a
+ * reconvergence-driven cut, and attempts to re-express the node's
+ * function using existing nodes from the cut.  Node which are no
+ * longer used (including nodes in their transitive fanins) can then
+ * be removed.  The objective is to reduce the size of the network as
+ * much as possible while maintaining the global input-output
+ * functionality.
+ *
+ * **Required network functions:**
+ *
+ * - `clear_values`
+ * - `fanout_size`
+ * - `foreach_fanin`
+ * - `foreach_fanout`
+ * - `foreach_gate`
+ * - `foreach_node`
+ * - `get_constant`
+ * - `get_node`
+ * - `is_complemented`
+ * - `is_pi`
+ * - `level`
+ * - `make_signal`
+ * - `set_value`
+ * - `set_visited`
+ * - `size`
+ * - `substitute_node`
+ * - `value`
+ * - `visited`
+ *
+ * \param ntk A network type derived from aig_network
+ * \param ps Resubstitution parameters
+ * \param pst Resubstitution statistics
+ */
+template<class Ntk>
+void aig_resubstitution2( Ntk& ntk, resubstitution_params const& ps = {}, resubstitution_stats* pst = nullptr )
+{
+  static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
+  static_assert( std::is_same_v<typename Ntk::base_type, aig_network>, "Network type is not aig_network" );
+
+  static_assert( has_clear_values_v<Ntk>, "Ntk does not implement the clear_values method" );
+  static_assert( has_fanout_size_v<Ntk>, "Ntk does not implement the fanout_size method" );
+  static_assert( has_foreach_fanin_v<Ntk>, "Ntk does not implement the foreach_fanin method" );
+  static_assert( has_foreach_gate_v<Ntk>, "Ntk does not implement the foreach_gate method" );
+  static_assert( has_foreach_node_v<Ntk>, "Ntk does not implement the foreach_node method" );
+  static_assert( has_get_constant_v<Ntk>, "Ntk does not implement the get_constant method" );
+  static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node method" );
+  static_assert( has_is_complemented_v<Ntk>, "Ntk does not implement the is_complemented method" );
+  static_assert( has_is_pi_v<Ntk>, "Ntk does not implement the is_pi method" );
+  static_assert( has_make_signal_v<Ntk>, "Ntk does not implement the make_signal method" );
+  static_assert( has_set_value_v<Ntk>, "Ntk does not implement the set_value method" );
+  static_assert( has_set_visited_v<Ntk>, "Ntk does not implement the set_visited method" );
+  static_assert( has_size_v<Ntk>, "Ntk does not implement the has_size method" );
+  static_assert( has_substitute_node_v<Ntk>, "Ntk does not implement the has substitute_node method" );
+  static_assert( has_value_v<Ntk>, "Ntk does not implement the has_value method" );
+  static_assert( has_visited_v<Ntk>, "Ntk does not implement the has_visited method" );
+  static_assert( has_level_v<Ntk>, "Ntk does not implement the level method" );
+  static_assert( has_foreach_fanout_v<Ntk>, "Ntk does not implement the foreach_fanout method" );
+
+  using truthtable_t = kitty::dynamic_truth_table;
+  using truthtable_dc_t = kitty::dynamic_truth_table;
+  using functor_t = aig_resyn_functor<Ntk, detail::window_simulator<Ntk, truthtable_t>, truthtable_dc_t>;
+
+  using resub_impl_t = detail::resubstitution_impl<Ntk, detail::window_based_resub_engine<Ntk, truthtable_t, truthtable_dc_t, functor_t>>;
+
+  resubstitution_stats st;
+  typename resub_impl_t::engine_st_t engine_st;
+  typename resub_impl_t::collector_st_t collector_st;
+
+  resub_impl_t p( ntk, ps, st, engine_st, collector_st );
+  p.run();
+
+  if ( ps.verbose )
+  {
+    st.report();
+    collector_st.report();
+    engine_st.report();
+  }
+
+  if ( pst )
+  {
+    *pst = st;
   }
 }
 

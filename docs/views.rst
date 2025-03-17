@@ -84,20 +84,44 @@ algorithm.  Several views are implemented in mockturtle.
 .. doxygenclass:: mockturtle::window_view
    :members:
 
-`binding_view`: Add bindings to a technology library
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+`binding_view`: Add bindings from a technology library
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 **Header:** ``mockturtle/views/binding_view.hpp``
 
 .. doxygenclass:: mockturtle::binding_view
    :members:
 
+`cell_view`: Add cell mappings from a technology library
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+**Header:** ``mockturtle/views/cell_view.hpp``
+
+.. doxygenclass:: mockturtle::cell_view
+   :members:
+
 `names_view`: Assign names to signals and outputs
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+**Header:** ``mockturtle/views/choice_view.hpp``
+
+.. doxygenclass:: mockturtle::choice_view
+   :members:
+
+`choice_view`: Implements choices in networks
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 **Header:** ``mockturtle/views/names_view.hpp``
 
 .. doxygenclass:: mockturtle::names_view
+   :members:
+
+`dont_touch_view`: Mark nodes as "don't touch"
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+**Header:** ``mockturtle/views/dont_touch_view.hpp``
+
+.. doxygenclass:: mockturtle::dont_touch_view
    :members:
 
 `cnf_view`: Creates a CNF while creating a network

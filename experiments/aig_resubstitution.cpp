@@ -33,6 +33,8 @@
 #include <mockturtle/algorithms/resubstitution.hpp>
 #include <mockturtle/io/aiger_reader.hpp>
 #include <mockturtle/networks/aig.hpp>
+#include <mockturtle/views/depth_view.hpp>
+#include <mockturtle/views/fanout_view.hpp>
 
 #include <experiments.hpp>
 
@@ -56,11 +58,13 @@ int main()
     resubstitution_stats st;
 
     ps.max_pis = 8u;
-    ps.max_inserts = 1u;
+    ps.max_inserts = 2u;
     ps.progress = false;
 
     const uint32_t size_before = aig.num_gates();
-    aig_resubstitution( aig, ps, &st );
+    depth_view depth_aig{ aig };
+    fanout_view fanout_aig{ depth_aig };
+    aig_resubstitution2( fanout_aig, ps, &st );
 
     aig = cleanup_dangling( aig );
 

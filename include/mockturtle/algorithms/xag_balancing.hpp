@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018-2022  EPFL
+ * Copyright (C) 2018-2023  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -49,14 +49,19 @@ struct xag_balancing_params
 {
   /*! \brief Minimizes the number of levels. */
   bool minimize_levels{ true };
+
   bool md_optimization{ false };
+
+  /*! \brief Use fast version, it may not find some area optimizations. */
+  bool fast_mode{ true };
+>>>>>>> master
 };
 
 namespace detail
 {
 
 template<class Ntk>
-class xag_balancing_impl
+class xag_balance_impl
 {
 public:
   static constexpr size_t storage_init_size = 30;
@@ -65,7 +70,7 @@ public:
   using storage_t = std::vector<std::vector<signal>>;
 
 public:
-  xag_balancing_impl( Ntk& ntk, xag_balancing_params const& ps )
+  xag_balance_impl( Ntk& ntk, xag_balancing_params const& ps )
       : ntk( ntk ), ps( ps ), storage( storage_init_size )
   {
   }
@@ -113,7 +118,7 @@ private:
       else
       {
       	is_and = false;
-      	if ( !md_optimization )
+      	if ( !ps.md_optimization )
       	{
       		polarity = collect_leaves_xor( n, storage[level] );
       	}
@@ -140,7 +145,7 @@ private:
     assert( storage[level].size() > 1 );
 
     /* sort by decreasing level */
-    std::sort( storage[level].begin(), storage[level].end(), [this]( auto const& a, auto const& b ) {
+    std::stable_sort( storage[level].begin(), storage[level].end(), [this]( auto const& a, auto const& b ) {
       return ntk.level( ntk.get_node( a ) ) > ntk.level( ntk.get_node( b ) );
     } );
 
@@ -154,10 +159,20 @@ private:
       while ( storage[level].size() > 1 )
       {
         /* explore multiple possibilities to find logic sharing */
-        if ( ps.minimize_levels )
-          pick_nodes_and( storage[level], find_left_most_at_level( storage[level] ) );
+        if ( ps.fast_mode )
+        {
+          if ( ps.minimize_levels )
+            pick_nodes_and_fast( storage[level], find_left_most_at_level( storage[level] ) );
+          else
+            pick_nodes_and_area_fast( storage[level] );
+        }
         else
-          pick_nodes_and_area( storage[level] );
+        {
+          if ( ps.minimize_levels )
+            pick_nodes_and( storage[level], find_left_most_at_level( storage[level] ) );
+          else
+            pick_nodes_and_area( storage[level] );
+        }
 
         /* pop the two selected nodes to create the new AND gate */
         signal child1 = storage[level].back();
@@ -178,10 +193,20 @@ private:
       while ( storage[level].size() > 1 )
       {
         /* explore multiple possibilities to find logic sharing */
-        if ( ps.minimize_levels )
-          pick_nodes_xor( storage[level], find_left_most_at_level( storage[level] ) );
+        if ( ps.fast_mode )
+        {
+          if ( ps.minimize_levels )
+            pick_nodes_xor_fast( storage[level], find_left_most_at_level( storage[level] ) );
+          else
+            pick_nodes_xor_area_fast( storage[level] );
+        }
         else
-          pick_nodes_xor_area( storage[level] );
+        {
+          if ( ps.minimize_levels )
+            pick_nodes_xor( storage[level], find_left_most_at_level( storage[level] ) );
+          else
+            pick_nodes_xor_area( storage[level] );
+        }
 
         /* pop the two selected nodes to create the new XOR gate */
         signal child1 = storage[level].back();
@@ -336,7 +361,7 @@ private:
     return pointer;
   }
 
-  void pick_nodes_and( std::vector<signal>& leaves, size_t left_most )
+  inline void pick_nodes_and( std::vector<signal>& leaves, size_t left_most )
   {
     size_t right_most = leaves.size() - 2;
 
@@ -370,7 +395,29 @@ private:
     }
   }
 
-  void pick_nodes_and_area( std::vector<signal>& leaves )
+  inline void pick_nodes_and_fast( std::vector<signal>& leaves, size_t left_most )
+  {
+    size_t left_pointer = leaves.size() - 1;
+    while ( left_pointer-- > left_most )
+    {
+      /* select if node exists */
+      std::optional<signal> pnode = ntk.has_and( leaves.back(), leaves[left_pointer] );
+      if ( pnode.has_value() )
+      {
+        /* already present in TFI */
+        if ( ntk.visited( ntk.get_node( *pnode ) ) == ntk.trav_id() )
+        {
+          continue;
+        }
+
+        if ( leaves[left_pointer] != leaves[leaves.size() - 2] )
+          std::swap( leaves[left_pointer], leaves[leaves.size() - 2] );
+        break;
+      }
+    }
+  }
+
+  inline void pick_nodes_and_area( std::vector<signal>& leaves )
   {
     for ( size_t right_pointer = leaves.size() - 1; right_pointer > 0; --right_pointer )
     {
@@ -397,7 +444,29 @@ private:
     }
   }
 
-  void pick_nodes_xor( std::vector<signal>& leaves, size_t left_most )
+  inline void pick_nodes_and_area_fast( std::vector<signal>& leaves )
+  {
+    size_t left_pointer = leaves.size() - 1;
+    while ( left_pointer-- > 0 )
+    {
+      /* select if node exists */
+      std::optional<signal> pnode = ntk.has_and( leaves.back(), leaves[left_pointer] );
+      if ( pnode.has_value() )
+      {
+        /* already present in TFI */
+        if ( ntk.visited( ntk.get_node( *pnode ) ) == ntk.trav_id() )
+        {
+          continue;
+        }
+
+        if ( leaves[left_pointer] != leaves[leaves.size() - 2] )
+          std::swap( leaves[left_pointer], leaves[leaves.size() - 2] );
+        break;
+      }
+    }
+  }
+
+  inline void pick_nodes_xor( std::vector<signal>& leaves, size_t left_most )
   {
     size_t right_most = leaves.size() - 2;
 
@@ -431,7 +500,29 @@ private:
     }
   }
 
-  void pick_nodes_xor_area( std::vector<signal>& leaves )
+  inline void pick_nodes_xor_fast( std::vector<signal>& leaves, size_t left_most )
+  {
+    size_t left_pointer = leaves.size() - 1;
+    while ( left_pointer-- > left_most )
+    {
+      /* select if node exists */
+      std::optional<signal> pnode = ntk.has_xor( leaves.back(), leaves[left_pointer] );
+      if ( pnode.has_value() )
+      {
+        /* already present in TFI */
+        if ( ntk.visited( ntk.get_node( *pnode ) ) == ntk.trav_id() )
+        {
+          continue;
+        }
+
+        if ( leaves[left_pointer] != leaves[leaves.size() - 2] )
+          std::swap( leaves[left_pointer], leaves[leaves.size() - 2] );
+        break;
+      }
+    }
+  }
+
+  inline void pick_nodes_xor_area( std::vector<signal>& leaves )
   {
     for ( size_t right_pointer = leaves.size() - 1; right_pointer > 0; --right_pointer )
     {
@@ -454,6 +545,28 @@ private:
             std::swap( leaves[left_pointer], leaves[leaves.size() - 2] );
           break;
         }
+      }
+    }
+  }
+
+  inline void pick_nodes_xor_area_fast( std::vector<signal>& leaves )
+  {
+    size_t left_pointer = leaves.size() - 1;
+    while ( left_pointer-- > 0 )
+    {
+      /* select if node exists */
+      std::optional<signal> pnode = ntk.has_xor( leaves.back(), leaves[left_pointer] );
+      if ( pnode.has_value() )
+      {
+        /* already present in TFI */
+        if ( ntk.visited( ntk.get_node( *pnode ) ) == ntk.trav_id() )
+        {
+          continue;
+        }
+
+        if ( leaves[left_pointer] != leaves[leaves.size() - 2] )
+          std::swap( leaves[left_pointer], leaves[leaves.size() - 2] );
+        break;
       }
     }
   }
@@ -567,12 +680,12 @@ private:
 
 } /* namespace detail */
 
-/*! \brief AIG balancing.
+/*! \brief XAG balancing.
  *
- * This method balance the AIG to reduce the
+ * This method balance the XAG to reduce the
  * depth. Level minimization can be turned off.
  * In this case, balancing tries to reconstruct
- * AND trees such that logic sharing is maximized.
+ * AND and XOR trees such that logic sharing is maximized.
  *
  * **Required network functions:**
  * - `get_node`
@@ -591,7 +704,7 @@ private:
  * - `has_and`
  */
 template<class Ntk>
-void xag_balancing( Ntk& ntk, xag_balancing_params const& ps = {} )
+void xag_balance( Ntk& ntk, xag_balancing_params const& ps = {} )
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
   static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node method" );
@@ -613,7 +726,7 @@ void xag_balancing( Ntk& ntk, xag_balancing_params const& ps = {} )
   fanout_view<Ntk> f_ntk{ ntk };
   depth_view<fanout_view<Ntk>> d_ntk{ f_ntk };
 
-  detail::xag_balancing_impl p( d_ntk, ps );
+  detail::xag_balance_impl p( d_ntk, ps );
   p.run();
 
   ntk = cleanup_dangling( ntk );

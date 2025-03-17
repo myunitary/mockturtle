@@ -37,7 +37,13 @@ Write into structural Verilog files
 
 .. doxygenfunction:: mockturtle::write_verilog(Ntk const&, std::ostream&, write_verilog_params const&)
 
+.. doxygenfunction:: mockturtle::write_verilog_with_binding(Ntk const&, std::string const&, write_verilog_params const&)
+
 .. doxygenfunction:: mockturtle::write_verilog_with_binding(Ntk const&, std::ostream&, write_verilog_params const&)
+
+.. doxygenfunction:: mockturtle::write_verilog_with_cell(Ntk const&, std::string const&, write_verilog_params const&)
+
+.. doxygenfunction:: mockturtle::write_verilog_with_cell(Ntk const&, std::ostream&, write_verilog_params const&)
 
 Write into DIMACS files (CNF)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -67,3 +73,12 @@ Write simulation patterns into file
 .. doxygenfunction:: mockturtle::write_patterns(Simulator const&, std::string const&)
 
 .. doxygenfunction:: mockturtle::write_patterns(Simulator const&, std::ostream&)
+
+Write library into GENLIB file
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+**Header:** ``mockturtle/io/write_genlib.hpp``
+
+.. doxygenfunction:: mockturtle::write_genlib(std::vector<gate> const&, std::string const&)
+
+.. doxygenfunction:: mockturtle::write_genlib(std::vector<gate> const&, std::ostream&)

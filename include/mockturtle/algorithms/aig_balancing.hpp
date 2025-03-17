@@ -49,6 +49,9 @@ struct aig_balancing_params
 {
   /*! \brief Minimizes the number of levels. */
   bool minimize_levels{ true };
+
+  /*! \brief Use fast version, it may not find some area optimizations. */
+  bool fast_mode{ true };
 };
 
 namespace detail
@@ -65,7 +68,7 @@ public:
 
 public:
   aig_balance_impl( Ntk& ntk, aig_balancing_params const& ps )
-      : ntk( ntk ), ps( ps ),storage( storage_init_size )
+      : ntk( ntk ), ps( ps ), storage( storage_init_size )
   {
   }
 
@@ -119,7 +122,7 @@ private:
     assert( storage[level].size() > 1 );
 
     /* sort by decreasing level */
-    std::sort( storage[level].begin(), storage[level].end(), [this]( auto const& a, auto const& b ) {
+    std::stable_sort( storage[level].begin(), storage[level].end(), [this]( auto const& a, auto const& b ) {
       return ntk.level( ntk.get_node( a ) ) > ntk.level( ntk.get_node( b ) );
     } );
 
@@ -131,10 +134,20 @@ private:
     while ( storage[level].size() > 1 )
     {
       /* explore multiple possibilities to find logic sharing */
-      if ( ps.minimize_levels )
-        pick_nodes( storage[level], find_left_most_at_level( storage[level] ) );
+      if ( ps.fast_mode )
+      {
+        if ( ps.minimize_levels )
+          pick_nodes_fast( storage[level], find_left_most_at_level( storage[level] ) );
+        else
+          pick_nodes_area_fast( storage[level] );
+      }
       else
-        pick_nodes_area( storage[level] );
+      {
+        if ( ps.minimize_levels )
+          pick_nodes( storage[level], find_left_most_at_level( storage[level] ) );
+        else
+          pick_nodes_area( storage[level] );
+      }
 
       /* pop the two selected nodes to create the new AND gate */
       signal child1 = storage[level].back();
@@ -155,7 +168,7 @@ private:
     /* replace if new */
     if ( n != ntk.get_node( root ) )
     {
-      ntk.substitute_node( n, root );
+      ntk.substitute_node_no_restrash( n, root );
     }
 
     /* remember the substitution and the new node as already balanced */
@@ -235,7 +248,7 @@ private:
     return pointer;
   }
 
-  void pick_nodes( std::vector<signal>& leaves, size_t left_most )
+  inline void pick_nodes( std::vector<signal>& leaves, size_t left_most )
   {
     size_t right_most = leaves.size() - 2;
 
@@ -250,11 +263,11 @@ private:
       while ( left_pointer-- > left_most )
       {
         /* select if node exists */
-        std::optional<node> pnode = ntk.has_and( leaves[right_pointer], leaves[left_pointer] );
+        std::optional<signal> pnode = ntk.has_and( leaves[right_pointer], leaves[left_pointer] );
         if ( pnode.has_value() )
         {
           /* already present in TFI */
-          if ( ntk.visited( *pnode ) == ntk.trav_id() )
+          if ( ntk.visited( ntk.get_node( *pnode ) ) == ntk.trav_id() )
           {
             continue;
           }
@@ -269,7 +282,29 @@ private:
     }
   }
 
-  void pick_nodes_area( std::vector<signal>& leaves )
+  inline void pick_nodes_fast( std::vector<signal>& leaves, size_t left_most )
+  {
+    size_t left_pointer = leaves.size() - 1;
+    while ( left_pointer-- > left_most )
+    {
+      /* select if node exists */
+      std::optional<signal> pnode = ntk.has_and( leaves.back(), leaves[left_pointer] );
+      if ( pnode.has_value() )
+      {
+        /* already present in TFI */
+        if ( ntk.visited( ntk.get_node( *pnode ) ) == ntk.trav_id() )
+        {
+          continue;
+        }
+
+        if ( leaves[left_pointer] != leaves[leaves.size() - 2] )
+          std::swap( leaves[left_pointer], leaves[leaves.size() - 2] );
+        break;
+      }
+    }
+  }
+
+  inline void pick_nodes_area( std::vector<signal>& leaves )
   {
     for ( size_t right_pointer = leaves.size() - 1; right_pointer > 0; --right_pointer )
     {
@@ -277,11 +312,11 @@ private:
       while ( left_pointer-- > 0 )
       {
         /* select if node exists */
-        std::optional<node> pnode = ntk.has_and( leaves[right_pointer], leaves[left_pointer] );
+        std::optional<signal> pnode = ntk.has_and( leaves[right_pointer], leaves[left_pointer] );
         if ( pnode.has_value() )
         {
           /* already present in TFI */
-          if ( ntk.visited( *pnode ) == ntk.trav_id() )
+          if ( ntk.visited( ntk.get_node( *pnode ) ) == ntk.trav_id() )
           {
             continue;
           }
@@ -292,6 +327,28 @@ private:
             std::swap( leaves[left_pointer], leaves[leaves.size() - 2] );
           break;
         }
+      }
+    }
+  }
+
+  inline void pick_nodes_area_fast( std::vector<signal>& leaves )
+  {
+    size_t left_pointer = leaves.size() - 1;
+    while ( left_pointer-- > 0 )
+    {
+      /* select if node exists */
+      std::optional<signal> pnode = ntk.has_and( leaves.back(), leaves[left_pointer] );
+      if ( pnode.has_value() )
+      {
+        /* already present in TFI */
+        if ( ntk.visited( ntk.get_node( *pnode ) ) == ntk.trav_id() )
+        {
+          continue;
+        }
+
+        if ( leaves[left_pointer] != leaves[leaves.size() - 2] )
+          std::swap( leaves[left_pointer], leaves[leaves.size() - 2] );
+        break;
       }
     }
   }

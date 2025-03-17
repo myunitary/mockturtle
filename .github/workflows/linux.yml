@@ -9,24 +9,6 @@ on:
     - master
 
 jobs:
-  build-gcc7:
-    runs-on: ubuntu-18.04
-    name: GNU GCC 7
-    
-    steps:
-    - uses: actions/checkout@v1
-      with:
-        submodules: true
-    - name: Build mockturtle
-      run: |
-        mkdir build
-        cd build
-        cmake -DCMAKE_CXX_COMPILER=g++-7 -DMOCKTURTLE_TEST=ON ..
-        make run_tests
-    - name: Run tests
-      run: |
-        cd build
-        ./test/run_tests "~[quality]"
   build-gcc9:
     runs-on: ubuntu-latest
     name: GNU GCC 9
@@ -81,6 +63,24 @@ jobs:
       run: |
         cd build
         ./test/run_tests "~[quality]"
+  build-gcc12:
+    runs-on: ubuntu-latest
+    name: GNU GCC 12
+    
+    steps:
+    - uses: actions/checkout@v1
+      with:
+        submodules: true
+    - name: Build mockturtle
+      run: |
+        mkdir build
+        cd build
+        cmake -DCMAKE_CXX_COMPILER=g++-12 -DMOCKTURTLE_TEST=ON ..
+        make run_tests
+    - name: Run tests
+      run: |
+        cd build
+        ./test/run_tests "~[quality]"
   build-clang11:
     runs-on: ubuntu-20.04
     name: Clang 11
@@ -99,9 +99,9 @@ jobs:
       run: |
         cd build
         ./test/run_tests "~[quality]"
-  build-clang12:
+  build-clang13:
     runs-on: ubuntu-latest
-    name: Clang 12
+    name: Clang 13
     
     steps:
     - uses: actions/checkout@v1
@@ -111,7 +111,7 @@ jobs:
       run: |
         mkdir build
         cd build
-        cmake -DCMAKE_CXX_COMPILER=clang++-12 -DMOCKTURTLE_TEST=ON ..
+        cmake -DCMAKE_CXX_COMPILER=clang++-13 -DMOCKTURTLE_TEST=ON ..
         make run_tests
     - name: Run tests
       run: |
