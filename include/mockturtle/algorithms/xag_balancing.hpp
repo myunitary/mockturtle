@@ -54,7 +54,6 @@ struct xag_balancing_params
 
   /*! \brief Use fast version, it may not find some area optimizations. */
   bool fast_mode{ true };
->>>>>>> master
 };
 
 namespace detail

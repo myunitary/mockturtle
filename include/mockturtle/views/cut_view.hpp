@@ -155,6 +155,12 @@ public:
     return std::find( beg, beg + _num_leaves, pi ) != beg + _num_leaves;
   }
 
+  inline bool is_ci( node const& ci ) const
+  {
+    const auto beg = _nodes.begin() + _num_constants;
+    return std::find( beg, beg + _num_leaves, ci ) != beg + _num_leaves;
+  }
+
   template<typename Fn>
   void foreach_pi( Fn&& fn ) const
   {

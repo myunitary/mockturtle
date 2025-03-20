@@ -244,7 +244,6 @@ private:
 			return true;
 		} );
 
-
 		std::ofstream rules;
 		rules.open( filename, std::ios::out );
 		if ( rules.is_open() )
