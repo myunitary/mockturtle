@@ -5,8 +5,9 @@
 #include <iostream>
 #include <limits>
 
-#include "../algorithms/cut_enumeration.hpp"
-#include "../algorithms/cleanup.hpp"
+#include "circuit_validator.hpp"
+#include "cut_enumeration.hpp"
+#include "cleanup.hpp"
 #include "../networks/xag.hpp"
 #include "../utils/node_map.hpp"
 #include "../utils/progress_bar.hpp"
@@ -138,7 +139,7 @@ private:
 			expr[pi] = 'a' + index;
 		} );
 
-		ntk.foreach_node( [&]( auto const& n ) {
+		topo_view<xag_network>( ntk ).foreach_node( [&]( auto const& n ) {
 			if ( ntk.is_constant( n ) || ntk.is_pi( n ) )
 			{
 				return true;
@@ -314,6 +315,11 @@ private:
 		}
 
 		ntk_cut.create_po( po_opt );
+
+		circuit_validator<xag_network, bill::solvers::bsat2, false, false, false> validator( ntk_cut );
+		std::optional<bool> eq = validator.validate( po_orig, po_opt );
+		assert( eq && ( *eq ) );
+
 		write_network_expr( ntk_cut, file );
 
 		return true;
