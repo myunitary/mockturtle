@@ -106,7 +106,7 @@ int main()
 {
   using namespace experiments;
   using namespace mockturtle;
-  bool rewrite_converge_first{ true };
+  bool rewrite_converge_first{ false };
   std::string postfix = ( rewrite_converge_first ? "_rewrite_converge_first" : "" );
 
   experiment<std::string, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, double> exp( ( "esop_paper" + postfix ), "benchmark", "#mc_init", "#md_init", "#mc_mc_opt", "#md_mc_opt", "#mc_esop", "#md_esop", "runtime" );
