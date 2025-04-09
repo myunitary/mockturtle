@@ -3,10 +3,7 @@
 #include <mockturtle/algorithms/cleanup.hpp>
 #include <mockturtle/algorithms/cut_rewriting.hpp>
 #include <mockturtle/algorithms/mapper.hpp>
-#include <mockturtle/algorithms/node_resynthesis/bidecomposition.hpp>
-#include <mockturtle/algorithms/node_resynthesis/davio.hpp>
 #include <mockturtle/algorithms/node_resynthesis/xag_minmc.hpp>
-#include <mockturtle/algorithms/refactoring.hpp>
 #include <mockturtle/algorithms/xag_resub_withDC.hpp>
 #include <mockturtle/io/aiger_reader.hpp>
 #include <mockturtle/io/verilog_reader.hpp>
@@ -123,7 +120,7 @@ int main()
 
   for ( auto const& benchmark : benchmarks )
   {
-  	fmt::print( "[i] processing {}\n", benchmark );
+    fmt::print( "[i] processing {}\n", benchmark );
 
     resubstitution_params ps_resub;
     ps_resub.max_divisors = 100u;
@@ -143,7 +140,7 @@ int main()
     xag_minmc_resynthesis xag_mc_resyn( "../experiments/db" );
     exact_library<xag_network> xag_mc_lib( xag_mc_resyn );
 
-  	xag_network ntk;
+    xag_network ntk;
     auto read_stats = lorina::read_verilog( bench_path( benchmark ), mockturtle::verilog_reader( ntk ) );
     if ( read_stats != lorina::return_code::success )
     {
