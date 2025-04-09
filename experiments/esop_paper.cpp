@@ -3,7 +3,9 @@
 #include <mockturtle/algorithms/cleanup.hpp>
 #include <mockturtle/algorithms/cut_rewriting.hpp>
 #include <mockturtle/algorithms/mapper.hpp>
+// #include <mockturtle/algorithms/node_resynthesis/bidecomposition.hpp>
 #include <mockturtle/algorithms/node_resynthesis/xag_minmc.hpp>
+// #include <mockturtle/algorithms/refactoring.hpp>
 #include <mockturtle/algorithms/xag_resub_withDC.hpp>
 #include <mockturtle/io/aiger_reader.hpp>
 #include <mockturtle/io/verilog_reader.hpp>
@@ -104,8 +106,10 @@ int main()
 {
   using namespace experiments;
   using namespace mockturtle;
+  bool rewrite_converge_first{ true };
+  std::string postfix = ( rewrite_converge_first ? "_rewrite_converge_first" : "" );
 
-  experiment<std::string, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, double> exp( "esop_paper", "benchmark", "#mc_init", "#md_init", "#mc_mc_opt", "#md_mc_opt", "#mc_esop", "#md_esop", "runtime" );
+  experiment<std::string, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, double> exp( ( "esop_paper" + postfix ), "benchmark", "#mc_init", "#md_init", "#mc_mc_opt", "#md_mc_opt", "#mc_esop", "#md_esop", "runtime" );
 
   uint32_t mc_init{};
   uint32_t md_init{};
@@ -120,6 +124,11 @@ int main()
 
   for ( auto const& benchmark : benchmarks )
   {
+    // if ( benchmark != "bar" )
+    // {
+    //   continue;
+    // }
+
     fmt::print( "[i] processing {}\n", benchmark );
 
     resubstitution_params ps_resub;
@@ -139,6 +148,14 @@ int main()
 
     xag_minmc_resynthesis xag_mc_resyn( "../experiments/db" );
     exact_library<xag_network> xag_mc_lib( xag_mc_resyn );
+
+    // refactoring_params ps_refactor;
+    // ps_refactor.verbose = false;
+    // ps_refactor.progress = false;
+    // ps_refactor.allow_zero_gain = false;
+    // ps_refactor.max_pis = 15u;
+    // ps_refactor.use_dont_cares = true;
+    // bidecomposition_resynthesis<xag_network> xag_bidec_resyn;
 
     xag_network ntk;
     auto read_stats = lorina::read_verilog( bench_path( benchmark ), mockturtle::verilog_reader( ntk ) );
@@ -166,6 +183,7 @@ int main()
     const auto begin_time = std::chrono::high_resolution_clock::now();
 
     uint32_t num_ite{};
+    if ( rewrite_converge_first )
     {
       while ( mc_tmp > mc_mc_opt )
       {
@@ -177,7 +195,38 @@ int main()
         ++num_ite;
         /* Rewriting in DATE20 */
         xag_network ntk_tmp = cut_rewriting<xag_network, xag_minmc_resynthesis, mc_count>( ntk, xag_mc_resyn, ps_rewrite, nullptr );
-        ntk_tmp = cleanup_dangling( ntk );
+        ntk_tmp = cleanup_dangling( ntk_tmp );
+  
+        mc_mc_opt = costs<xag_network, mc_count>( ntk_tmp );
+        depth_view<xag_network, mc_count, false> ntk_md{ ntk_tmp };
+        md_mc_opt = ntk_md.depth();
+        fmt::print( "[i] MC : {}; MD : {}\n", mc_mc_opt, md_mc_opt );
+  
+        if ( mc_mc_opt < mc_tmp )
+        {
+          ntk = ntk_tmp;
+        }
+      }
+    }
+
+    num_ite = 0u;
+    mc_mc_opt = 0u;
+    {
+      while ( mc_tmp > mc_mc_opt )
+      {
+        if ( num_ite > 0u )
+        {
+          mc_tmp = mc_mc_opt;
+        }
+  
+        ++num_ite;
+        /* Rewriting in DATE20 */
+        xag_network ntk_tmp = cut_rewriting<xag_network, xag_minmc_resynthesis, mc_count>( ntk, xag_mc_resyn, ps_rewrite, nullptr );
+        ntk_tmp = cleanup_dangling( ntk_tmp );
+
+        // /* Refactoring in DATE20 */
+        // refactoring( ntk_tmp, xag_bidec_resyn, ps_refactor, nullptr, free_xor_cost() );
+        // ntk_tmp = cleanup_dangling( ntk_tmp );
   
         /* Resubstitution in DATE20 */
         fanout_view<xag_network> ntk_fo{ ntk_tmp };
