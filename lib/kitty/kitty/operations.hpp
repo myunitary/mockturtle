@@ -751,6 +751,159 @@ bool has_var( const TT& tt, uint8_t var_index )
   return false;
 }
 
+/*! \brief Checks whether a truth table depends on the given variable index, with the given care set considered.
+
+  \param tt Truth table
+  \param care Care set
+  \param var_index Variable index
+*/
+template<typename TT, typename = std::enable_if_t<is_complete_truth_table<TT>::value>>
+bool has_var( TT const& tt, TT const& care, uint8_t var_index )
+{
+  // assert( var_index < tt.num_vars() );
+  // assert( tt.num_vars() == care.num_vars() );
+
+  // if ( tt.num_vars() <= 6 || var_index < 6 )
+  // {
+  //   auto it_tt = std::begin( tt._bits );
+  //   auto it_care = std::begin( care._bits );
+  //   while ( it_tt != std::end( tt._bits ) )
+  //   {
+  //     if ( ( ( ( *it_tt >> ( uint64_t( 1 ) << var_index ) ) ^ *it_tt ) & detail::projections_neg[var_index] ) &
+  //          ( ( *it_care >> ( uint64_t( 1 ) << var_index ) ) & *it_care ) != 0 )
+  //     {
+  //       return true;
+  //     }
+  //     ++it_tt;
+  //     ++it_care;
+  //   }
+  //   return false;
+  // }
+
+  // const auto step = 1 << ( var_index - 6 );
+  // for ( auto i = 0u; i < static_cast<uint32_t>( tt.num_blocks() ); i += 2 * step )
+  // {
+  //   for ( auto j = 0u; j < step; ++j )
+  //   {
+  //     if ( ( tt._bits[i + j] ^ tt._bits[i + j + step] ) &
+  //          ( care._bits[i + j] & care._bits[i + j + step] ) != 0 )
+  //     {
+  //       return true;
+  //     }
+  //   }
+  // }
+  // return false;
+
+  assert( var_index < tt.num_vars() );
+  assert( tt.num_vars() == care.num_vars() );
+
+  if ( tt.num_vars() <= 6 || var_index < 6 )
+  {
+    auto it_tt = std::begin( tt._bits );
+    auto it_care = std::begin( care._bits );
+    while ( it_tt != std::end( tt._bits ) )
+    {
+      if ( ( ( ( *it_tt >> ( uint64_t( 1 ) << var_index ) ) ^ *it_tt ) & detail::projections_neg[var_index]
+           & ( *it_care >> ( uint64_t( 1 ) << var_index ) ) & *it_care ) != 0 )
+      {
+        return true;
+      }
+      ++it_tt;
+      ++it_care;
+    }
+
+    return false;
+  }
+
+  const auto step = 1 << ( var_index - 6 );
+  for ( auto i = 0u; i < static_cast<uint32_t>( tt.num_blocks() ); i += 2 * step )
+  {
+    for ( auto j = 0; j < step; ++j )
+    {
+      if ( ( ( tt._bits[i + j] ^ tt._bits[i + j + step] ) & care._bits[i + j] & care._bits[i + j + step] ) != 0 )
+      {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+template<typename TT, typename = std::enable_if_t<is_complete_truth_table<TT>::value>>
+void adjust_tt_on_dc( TT& tt, TT& care, uint8_t var_index )
+{
+  // assert( var_index < tt.num_vars() );
+  // assert( tt.num_vars() == care.num_vars() );
+  
+  // const uint32_t num_vars = tt.num_vars();
+  // const uint32_t num_blocks = ( num_vars <= 6u ) ? 1u : ( 1 << ( num_vars - 6u ) );
+  // if ( num_vars <= 6u || var_index < 6u )
+  // {
+  //   auto it_tt = std::begin( tt._bits );
+  //   auto it_care = std::begin( care._bits );
+  //   while ( it_tt != std::begin( tt._bits ) + num_blocks )
+  //   {
+  //     uint64_t word = *it_tt & *it_care;
+  //     *it_tt = ( ( word | ( word >> ( uint64_t( 1 ) << var_index ) ) ) & kitty::detail::projections_neg[var_index] ) |
+  //              ( ( word | ( word << ( uint64_t( 1 ) << var_index ) ) ) & kitty::detail::projections[var_index] );
+  //     *it_care =  ( *it_care | ( *it_care >> ( uint64_t( 1 ) << var_index ) ) ) & kitty::detail::projections_neg[var_index];
+  //     *it_care = *it_care | ( *it_care << ( uint64_t( 1 ) << var_index ) );
+
+  //     ++it_tt;
+  //     ++it_care;
+  //   }
+  //   return;
+  // }
+
+  // const uint32_t step = uint32_t( 1u ) << ( var_index - 6u );
+  // for ( uint32_t i = 0u; i < num_blocks; i += 2* step )
+  // {
+  //   for ( uint32_t j = 0u; j < step; ++j )
+  //   {
+  //     tt._bits[i + j] = ( tt._bits[i + j] & care._bits[i + j] ) |
+  //                       ( tt._bits[i + j + step] & care._bits[i + j + step] );
+  //     tt._bits[i + j + step] = tt._bits[i + j];
+  //     care._bits[i + j] = care._bits[i + j] | care._bits[i + j + step];
+  //     care._bits[i + j + step] = care._bits[i + j];
+  //   }
+  // }
+
+  const uint32_t real_num_vars = tt.num_vars();
+  assert( var_index < real_num_vars );
+  assert( tt.num_vars() == care.num_vars() );
+
+  const uint32_t num_blocks = real_num_vars <= 6 ? 1 : ( 1 << ( real_num_vars - 6 ) );
+  if ( real_num_vars <= 6 || var_index < 6 )
+  {
+    auto it_tt = std::begin( tt._bits );
+    auto it_care = std::begin( care._bits );
+    while ( it_tt != std::begin( tt._bits ) + num_blocks )
+    {
+      uint64_t new_bits = *it_tt & *it_care;
+      *it_tt = ( ( new_bits | ( new_bits >> ( uint64_t( 1 ) << var_index ) ) ) & kitty::detail::projections_neg[var_index] ) |
+               ( ( new_bits | ( new_bits << ( uint64_t( 1 ) << var_index ) ) ) & kitty::detail::projections[var_index] );
+      *it_care = ( *it_care | ( *it_care >> ( uint64_t( 1 ) << var_index ) ) ) & kitty::detail::projections_neg[var_index];
+      *it_care = *it_care | ( *it_care << ( uint64_t( 1 ) << var_index ) );
+
+      ++it_tt;
+      ++it_care;
+    }
+    return;
+  }
+
+  const auto step = 1 << ( var_index - 6 );
+  for ( auto i = 0u; i < static_cast<uint32_t>( num_blocks ); i += 2 * step )
+  {
+    for ( auto j = 0; j < step; ++j )
+    {
+      tt._bits[i + j] = ( tt._bits[i + j] & care._bits[i + j] ) | ( tt._bits[i + j + step] & care._bits[i + j + step] );
+      tt._bits[i + j + step] = tt._bits[i + j];
+      care._bits[i + j] = care._bits[i + j] | care._bits[i + j + step];
+      care._bits[i + j + step] = care._bits[i + j];
+    }
+  }
+}
+
 /*! \cond PRIVATE */
 template<uint32_t NumVars>
 bool has_var( const static_truth_table<NumVars, true>& tt, uint8_t var_index )
