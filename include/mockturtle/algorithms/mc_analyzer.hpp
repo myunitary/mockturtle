@@ -3,7 +3,6 @@
 #include "../networks/xag.hpp"
 #include "../views/cut_view.hpp"
 #include "../views/ownership_view.hpp"
-#include "acdecomp_max_local.hpp"
 #include "cleanup.hpp"
 #include "simulation.hpp"
 
@@ -22,6 +21,12 @@ namespace mockturtle
 // {
 //   bool verbose{ false };
 // };
+
+struct decomp_result
+{
+	kitty::dynamic_truth_table tt;
+	std::vector<uint32_t> support;
+};
 
 class mc_analyzer
 {
@@ -86,46 +91,206 @@ public:
     return 0u;
   }
 
+  int32_t estimate_decomp_res_cost( std::vector<decomp_result> const& decomp_res, uint32_t num_vars, std::vector<std::vector<uint32_t>> const& ownerships )
+  {
+    int32_t cost{ 0 };
+    /* construct a toy XAG for a precise cost estimation */
+    xag_network ntk;
+    std::vector<xag_network::signal> pis( num_vars );
+    std::generate( pis.begin(), pis.end(), [&ntk]() { return ntk.create_pi(); } );
+
+    /* reorder `ownerships` into `pi_ownerships` */
+    std::vector<uint32_t> pis_ownership_per_pi( num_vars );
+    for ( auto i{ 1u }; i < ownerships.size(); ++i )
+    {
+      for ( auto element : ownerships[i] )
+      {
+        pis_ownership_per_pi[element] = ( 1 << ( i - 1 ) );
+      }
+    }
+    for ( auto element : ownerships[0] )
+    {
+      /* TODO : any better solution? */
+      pis_ownership_per_pi[element] = 3u;
+    }
+
+    /* the constructed XAG only implements the BS functions */
+
+    for ( uint32_t i{ 0u }; i < decomp_res.size() - 1; ++i )
+    {
+      const kitty::dynamic_truth_table tt = decomp_res[i].tt;
+      const std::vector<uint32_t> support = decomp_res[i].support;
+      const auto tt_ext = kitty::extend_to<6u>( tt );
+
+      std::vector<xag_network::signal> pis_part( 6u, ntk.get_constant( false ) );
+      for ( uint32_t j{ 0u }; j < support.size(); ++j )
+      {
+        pis_part[j] = pis[support[j]];
+      }
+
+      std::vector<kitty::detail::spectral_operation> trans;
+      kitty::static_truth_table<6u> tt_ext_repr;
+
+      const auto it_cache = _classify_cache.find( tt_ext );
+      if ( it_cache != _classify_cache.end() )
+      {
+        if ( !std::get<0>( it_cache->second ) )
+        {
+          // fmt::print( "[e] Unable to figure out the MC of this function...\n" );
+          return -1;
+        }
+
+        tt_ext_repr = std::get<1>( it_cache->second );
+        trans = std::get<2>( it_cache->second );
+      }
+      else
+      {
+        const auto spectral = kitty::exact_spectral_canonization_limit( tt_ext, 100000, [&trans]( auto const& ops ) {
+          std::copy( ops.begin(), ops.end(), std::back_inserter( trans ) );
+        } );
+        _classify_cache.insert( { tt_ext, { spectral.second, spectral.first, trans } } );
+
+        if ( !spectral.second )
+        {
+          // fmt::print( "[e] Unknown representative function...\n" );
+          return -1;
+        }
+
+        tt_ext_repr = spectral.first;
+      }
+
+      xag_network::signal sig = _db.get_constant( false );
+      const auto it_search = _func_mc.find( kitty::to_hex( tt_ext_repr ) );
+      if ( it_search != _func_mc.end() )
+      {
+        uint8_t mc = 0u;
+        std::string db_repr_str = "";
+        std::tie( db_repr_str, mc, sig ) = it_search->second;
+        kitty::static_truth_table<6u> db_repr;
+        kitty::create_from_hex_string( db_repr, db_repr_str );
+        kitty::exact_spectral_canonization( db_repr, [&trans]( auto const& ops ) {
+          std::copy( ops.rbegin(), ops.rend(), std::back_inserter( trans ) );
+        } );
+      }
+      else if ( !kitty::is_const0( tt_ext_repr ) )
+      {
+        // fmt::print( "[e] Unknown representative function...\n" );
+        return -1;
+      }
+
+      bool out_neg = false;
+      std::vector<xag_network::signal> final_xors;
+      for ( auto const& each_trans : trans )
+      {
+        switch ( each_trans._kind )
+        {
+        case kitty::detail::spectral_operation::kind::permutation:
+        {
+          const auto v1 = log2( each_trans._var1 );
+          const auto v2 = log2( each_trans._var2 );
+          std::swap( pis_part[v1], pis_part[v2] );
+          break;
+        }
+        case kitty::detail::spectral_operation::kind::input_negation:
+        {
+          const auto v1 = log2( each_trans._var1 );
+          pis_part[v1] = !pis_part[v1];
+          break;
+        }
+        case kitty::detail::spectral_operation::kind::output_negation:
+        {
+          out_neg = !out_neg;
+          break;
+        }
+        case kitty::detail::spectral_operation::kind::spectral_translation:
+        {
+          const auto v1 = log2( each_trans._var1 );
+          const auto v2 = log2( each_trans._var2 );
+          pis_part[v1] = ntk.create_xor( pis_part[v1], pis_part[v2] );
+          break;
+        }
+        case kitty::detail::spectral_operation::kind::disjoint_translation:
+        {
+          const auto v1 = log2( each_trans._var1 );
+          final_xors.push_back( pis_part[v1] );
+          break;
+        }
+        default:
+          break;
+        }
+      }
+
+      xag_network::signal output;
+      if ( _db.is_constant( _db.get_node( sig ) ) )
+      {
+        output = ntk.get_constant( _db.is_complemented( sig ) );
+      }
+      else
+      {
+        cut_view<xag_network> topo{ _db, _pis, sig };
+        output = cleanup_dangling( topo, ntk, pis_part.begin(), pis_part.end() ).front();
+      }
+      for ( auto const& each_xor : final_xors )
+      {
+        output = ntk.create_xor( output, each_xor );
+      }
+      output = out_neg ? ntk.create_not( output ) : output;
+      ntk.create_po( output );
+    }
+
+    owner_view<xag_network> ntk_mpc( ntk, pis_ownership_per_pi, true );
+
+    ntk_mpc.foreach_node( [&ntk_mpc, &cost]( auto const& n ) {
+      if ( ( ntk_mpc.is_local( n ) == 0u ) && ntk_mpc.is_and( n ) )
+      {
+        ++cost;
+      }
+    } );
+
+    return cost;
+    /* pass ownership to realize rather precise cost estimation */
+  }
+
   xag_network::signal min_mc_resyn( xag_network& res, std::vector<xag_network::signal> const& leaves, std::vector<decomp_result> const& decomp_res )
   {
     /* for debugging */
-    fmt::print( "[m] (Second check) Leaves of the current cut are [ " );
-    for ( auto const& each_leaf : leaves )
-    {
-      fmt::print( "{}Node{} ", ( res.is_complemented( each_leaf ) ? "~" : "" ), ( res.node_to_index( res.get_node( each_leaf ) ) ) );
-    }
-    fmt::print( "]\n" );
+    // fmt::print( "[m] (Second check) Leaves of the current cut are [ " );
+    // for ( auto const& each_leaf : leaves )
+    // {
+    //   fmt::print( "{}Node{} ", ( res.is_complemented( each_leaf ) ? "~" : "" ), ( res.node_to_index( res.get_node( each_leaf ) ) ) );
+    // }
+    // fmt::print( "]\n" );
 
     auto signals = leaves;
     for ( uint32_t i = 0u; i < decomp_res.size(); ++i )
     {
       /* for debugging */
-      if ( i == ( decomp_res.size() - 1 ) )
-      {
-        fmt::print( "[m] Concerning top function " );
-      }
-      else
-      {
-        fmt::print( "[m] Concerning BS function " );
-      }
+      // if ( i == ( decomp_res.size() - 1 ) )
+      // {
+      //   fmt::print( "[m] Concerning top function " );
+      // }
+      // else
+      // {
+      //   fmt::print( "[m] Concerning BS function " );
+      // }
       
       const kitty::dynamic_truth_table tt = decomp_res[i].tt;
       const std::vector<uint32_t> support = decomp_res[i].support;
       const auto tt_ext = kitty::extend_to<6u>( tt );
 
-      kitty::print_hex( tt_ext );
-      fmt::print( "\nLeaves: [ " );
+      // kitty::print_hex( tt_ext );
+      // fmt::print( "\nLeaves: [ " );
 
-      std::vector<xag_network::signal> pis ( 6u, res.get_constant( false ) );
+      std::vector<xag_network::signal> pis( 6u, res.get_constant( false ) );
       for ( uint32_t j = 0; j < support.size(); ++j )
       {
         pis[j] = signals[support[j]];
 
-        fmt::print( "{}Node{} ", ( res.is_complemented( pis[j] ) ? "~" : "" ), ( res.node_to_index( res.get_node( pis[j] ) ) ) );
+        // fmt::print( "{}Node{} ", ( res.is_complemented( pis[j] ) ? "~" : "" ), ( res.node_to_index( res.get_node( pis[j] ) ) ) );
       }
 
-      fmt::print( "]\n" );
-      const auto pis_backup = pis; /* for evaluting the functionality of the newly generated implementation */
+      // fmt::print( "]\n" );
+      // const auto pis_backup = pis; /* for evaluting the functionality of the newly generated implementation */
 
       std::vector<kitty::detail::spectral_operation> trans;
       kitty::static_truth_table<6u> tt_ext_repr;
@@ -158,22 +323,22 @@ public:
         tt_ext_repr = spectral.first;
 
         /* for debugging */
-        fmt::print( "[m] Classify original function " );
-        kitty::print_hex( tt_ext );
-        fmt::print( " into " );
-        kitty::print_hex( tt_ext_repr );
-        fmt::print( "\n" );
-        fmt::print( "[m] Testing the validity of `trans`: [" );
-        for ( auto const& ele : trans )
-        {
-          fmt::print( "{} ", ele._kind );
-        }
-        fmt::print( "]\n" );
+        // fmt::print( "[m] Classify original function " );
+        // kitty::print_hex( tt_ext );
+        // fmt::print( " into " );
+        // kitty::print_hex( tt_ext_repr );
+        // fmt::print( "\n" );
+        // fmt::print( "[m] Testing the validity of `trans`: [" );
+        // for ( auto const& ele : trans )
+        // {
+        //   fmt::print( "{} ", ele._kind );
+        // }
+        // fmt::print( "]\n" );
       }
 
-      fmt::print( "Representative function: " );
-      kitty::print_hex( tt_ext_repr );
-      fmt::print( "\n" );
+      // fmt::print( "Representative function: " );
+      // kitty::print_hex( tt_ext_repr );
+      // fmt::print( "\n" );
 
       xag_network::signal sig = _db.get_constant( false );
       const auto it_search = _func_mc.find( kitty::to_hex( tt_ext_repr ) );
@@ -195,7 +360,7 @@ public:
       }
 
       /* for debugging */
-      fmt::print( "[m] The issue is not related to the interaction with `_func_mc`\n" );
+      // fmt::print( "[m] The issue is not related to the interaction with `_func_mc`\n" );
 
       bool out_neg = false;
       std::vector<xag_network::signal> final_xors;
@@ -210,7 +375,7 @@ public:
           std::swap( pis[v1], pis[v2] );
 
           /* for debugging */
-          fmt::print( "[m] swap pis[{}] and pis[{}]\n", v1, v2 );
+          // fmt::print( "[m] swap pis[{}] and pis[{}]\n", v1, v2 );
 
           break;
         }
@@ -220,7 +385,7 @@ public:
           pis[v1] = !pis[v1];
 
           /* for debugging */
-          fmt::print( "[m] negate pis[{}]\n", v1 );
+          // fmt::print( "[m] negate pis[{}]\n", v1 );
 
           break;
         }
@@ -229,7 +394,7 @@ public:
           out_neg = !out_neg;
 
           /* for debugging */
-          fmt::print( "[m] negate output\n" );
+          // fmt::print( "[m] negate output\n" );
 
           break;
         }
@@ -240,7 +405,7 @@ public:
           pis[v1] = res.create_xor( pis[v1], pis[v2] );
 
           /* for debugging */
-          fmt::print( "[m] pis[{}] becomes XOR( pis[{}], pis[{}] )\n", v1, v1, v2 );
+          // fmt::print( "[m] pis[{}] becomes XOR( pis[{}], pis[{}] )\n", v1, v1, v2 );
 
           break;
         }
@@ -250,7 +415,7 @@ public:
           final_xors.push_back( pis[v1] );
 
           /* for debugging */
-          fmt::print( "[m] output is XORed with pis[{}]\n", v1 );
+          // fmt::print( "[m] output is XORed with pis[{}]\n", v1 );
 
           break;
         }
@@ -275,42 +440,42 @@ public:
       }
       output = out_neg ? res.create_not( output ) : output;
 
-      fmt::print( "Permuted leaves: [ " );
-      for ( auto j = 0; j < pis.size(); ++j )
-      {
-        fmt::print( "{}Node{} ", ( res.is_complemented( pis[j] ) ? "~" : "" ), ( res.node_to_index( res.get_node( pis[j] ) ) ) );
-      }
-      fmt::print( "]\n" );
+      // fmt::print( "Permuted leaves: [ " );
+      // for ( auto j = 0; j < pis.size(); ++j )
+      // {
+      //   fmt::print( "{}Node{} ", ( res.is_complemented( pis[j] ) ? "~" : "" ), ( res.node_to_index( res.get_node( pis[j] ) ) ) );
+      // }
+      // fmt::print( "]\n" );
       /* for debugging */
       /* verify the functionality of the resynthesized circuit */
-      cut_view<xag_network> new_impl{ res, pis_backup, output };
-      kitty::static_truth_table<6u> tt_new_impl = simulate<kitty::static_truth_table<6u>>( new_impl )[0];
-      for ( auto i = 0u; i < pis_backup.size(); ++i )
-      {
-        if ( res.is_complemented( pis_backup[i] ) )
-        {
-          kitty::flip_inplace( tt_new_impl, i );
-        }
-      }
-      if ( tt_new_impl != tt_ext )
-      {
-        fmt::print( "[e] The circuit synthesized for the {}th BS function is incorrect!\n", ( i + 1 ) );
-        std::cout << "[e] `tt_ext` = ";
-        kitty::print_hex( tt_ext );
-        fmt::print( "(support size = {})", tt.num_vars() );
-        std::cout << ", `tt_new_impl` = ";
-        kitty::print_hex( tt_new_impl );
-        uint32_t support_size = 0u;
-        for ( auto const& each_pi : pis )
-        {
-          if ( !res.is_constant( res.get_node( each_pi ) ) )
-          {
-            ++support_size;
-          }
-        }
-        fmt::print( "(support size = {})\n", support_size );
-        abort();
-      }
+      // cut_view<xag_network> new_impl{ res, pis_backup, output };
+      // kitty::static_truth_table<6u> tt_new_impl = simulate<kitty::static_truth_table<6u>>( new_impl )[0];
+      // for ( auto i = 0u; i < pis_backup.size(); ++i )
+      // {
+      //   if ( res.is_complemented( pis_backup[i] ) )
+      //   {
+      //     kitty::flip_inplace( tt_new_impl, i );
+      //   }
+      // }
+      // if ( tt_new_impl != tt_ext )
+      // {
+      //   fmt::print( "[e] The circuit synthesized for the {}th BS function is incorrect!\n", ( i + 1 ) );
+      //   std::cout << "[e] `tt_ext` = ";
+      //   kitty::print_hex( tt_ext );
+      //   fmt::print( "(support size = {})", tt.num_vars() );
+      //   std::cout << ", `tt_new_impl` = ";
+      //   kitty::print_hex( tt_new_impl );
+      //   uint32_t support_size = 0u;
+      //   for ( auto const& each_pi : pis )
+      //   {
+      //     if ( !res.is_constant( res.get_node( each_pi ) ) )
+      //     {
+      //       ++support_size;
+      //     }
+      //   }
+      //   fmt::print( "(support size = {})\n", support_size );
+      //   abort();
+      // }
 
       if ( i != decomp_res.size() - 1u )
       {
@@ -330,6 +495,155 @@ public:
         // kitty::print_hex( tt_ext );
         // fmt::print( "\n" );
 
+        return output;
+      }
+    }
+  }
+
+  using mpc_network = owner_view<xag_network>;
+
+  mpc_network::signal min_mc_resyn_mpc( mpc_network& res, std::vector<mpc_network::signal> const& leaves, std::vector<decomp_result> const& decomp_res )
+  {
+    auto signals = leaves;
+    for ( uint32_t i = 0u; i < decomp_res.size(); ++i )
+    {
+      // std::string func_name = "";
+      // if ( i == decomp_res.size() - 1 )
+      // {
+      //   func_name = "top";
+      // }
+      // else
+      // {
+      //   func_name = std::to_string( i + 1 ) + "-th BS";
+      // }
+      // fmt::print( "[m] Working on the {} function...\n", func_name );
+      const kitty::dynamic_truth_table tt = decomp_res[i].tt;
+      const std::vector<uint32_t> support = decomp_res[i].support;
+      const auto tt_ext = kitty::extend_to<6u>( tt );
+
+      std::vector<mpc_network::signal> pis( 6u, res.get_constant( false ) );
+      for ( uint32_t j = 0; j < support.size(); ++j )
+      {
+        pis[j] = signals[support[j]];
+      }
+
+      std::vector<kitty::detail::spectral_operation> trans;
+      kitty::static_truth_table<6u> tt_ext_repr;
+      
+      const auto it_cache = _classify_cache.find( tt_ext );
+      if ( it_cache != _classify_cache.end() )
+      {
+        if ( !std::get<0>( it_cache->second ) )
+        {
+          fmt::print( "[e] Unable to figure out the MC of this function, returning 0...\n" );
+          return res.get_constant( false );
+        }
+        
+        tt_ext_repr = std::get<1>( it_cache->second );
+        trans = std::get<2>( it_cache->second );
+      }
+      else
+      {
+        const auto spectral = kitty::exact_spectral_canonization_limit( tt_ext, 100000, [&trans]( auto const& ops ) {
+          std::copy( ops.begin(), ops.end(), std::back_inserter( trans ) );
+        } );
+        _classify_cache.insert( { tt_ext, { spectral.second, spectral.first, trans } } );
+        
+        if ( !spectral.second )
+        {
+          fmt::print( "[e] Unknown representative function, returning 0...\n" );
+          return res.get_constant( false );
+        }
+        
+        tt_ext_repr = spectral.first;
+      }
+
+      xag_network::signal sig = _db.get_constant( false );
+      const auto it_search = _func_mc.find( kitty::to_hex( tt_ext_repr ) );
+      if ( it_search != _func_mc.end() )
+      {
+        uint8_t mc = 0u;
+        std::string db_repr_str = "";
+        std::tie( db_repr_str, mc, sig ) = it_search->second;
+        kitty::static_truth_table<6u> db_repr;
+        kitty::create_from_hex_string( db_repr, db_repr_str );
+        kitty::exact_spectral_canonization( db_repr, [&trans]( auto const& ops ) {
+          std::copy( ops.rbegin(), ops.rend(), std::back_inserter( trans ) );
+        } );
+      }
+      else if ( !kitty::is_const0( tt_ext_repr ) )
+      {
+        fmt::print( "[e] Unknown representative function, returning 0...\n" );
+        return res.get_constant( false ); /* TODO: Handle this case */
+      }
+
+      bool out_neg = false;
+      std::vector<mpc_network::signal> final_xors;
+      for ( auto const& each_trans : trans )
+      {
+        switch ( each_trans._kind )
+        {
+        case kitty::detail::spectral_operation::kind::permutation:
+        {
+          const auto v1 = log2( each_trans._var1 );
+          const auto v2 = log2( each_trans._var2 );
+          std::swap( pis[v1], pis[v2] );
+          break;
+        }
+        case kitty::detail::spectral_operation::kind::input_negation:
+        {
+          const auto v1 = log2( each_trans._var1 );
+          pis[v1] = !pis[v1];
+          break;
+        }
+        case kitty::detail::spectral_operation::kind::output_negation:
+        {
+          out_neg = !out_neg;
+          break;
+        }
+        case kitty::detail::spectral_operation::kind::spectral_translation:
+        {
+          const auto v1 = log2( each_trans._var1 );
+          const auto v2 = log2( each_trans._var2 );
+          pis[v1] = res.create_xor( pis[v1], pis[v2] );
+          break;
+        }
+        case kitty::detail::spectral_operation::kind::disjoint_translation:
+        {
+          const auto v1 = log2( each_trans._var1 );
+          final_xors.push_back( pis[v1] );
+          break;
+        }
+        default:
+          break;
+        }
+      }
+
+      mpc_network::signal output;
+      if ( _db.is_constant( _db.get_node( sig ) ) )
+      {
+        output = res.get_constant( _db.is_complemented( sig ) );
+      }
+      else
+      {
+        cut_view<xag_network> topo{ _db, _pis, sig };
+        output = cleanup_dangling( topo, res, pis.begin(), pis.end() ).front();
+      }
+      for ( auto const& each_xor : final_xors )
+      {
+        output = res.create_xor( output, each_xor );
+      }
+      output = out_neg ? res.create_not( output ) : output;
+
+      if ( i != decomp_res.size() - 1u )
+      {
+        if ( !res.is_constant( res.get_node( output ) ) )
+        {
+          signals.push_back( output );
+        }
+      }
+      else
+      {
         return output;
       } 
     }
@@ -401,17 +715,17 @@ private:
       _db.create_po( f );
 
       /* for debugging */
-      cut_view<xag_network> new_impl{ _db, _pis, f };
-      kitty::static_truth_table<6u> tt;
-      kitty::create_from_hex_string( tt, original );
-      auto result = simulate<kitty::static_truth_table<6u>>( new_impl )[0];
-      if ( tt != result )
-      {
-        fmt::print( "[e] Invalid circuit for {}, got ", original );
-        kitty::print_hex( result );
-        fmt::print( "\n" );
-        abort();
-      }
+      // cut_view<xag_network> new_impl{ _db, _pis, f };
+      // kitty::static_truth_table<6u> tt;
+      // kitty::create_from_hex_string( tt, original );
+      // auto result = simulate<kitty::static_truth_table<6u>>( new_impl )[0];
+      // if ( tt != result )
+      // {
+      //   fmt::print( "[e] Invalid circuit for {}, got ", original );
+      //   kitty::print_hex( result );
+      //   fmt::print( "\n" );
+      //   abort();
+      // }
 
       _func_mc.insert( { token_f, { original, mc, f } } );
     }

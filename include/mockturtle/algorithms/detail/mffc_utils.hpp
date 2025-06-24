@@ -132,4 +132,14 @@ uint32_t mffc_size( Ntk const& ntk, node<Ntk> const& n )
   return v1;
 }
 
+template<typename Ntk, typename LeavesIterator, class NodeCostFn = unit_cost<Ntk>>
+uint32_t mffc_size( Ntk const& ntk, node<Ntk> const& n, LeavesIterator begin, LeavesIterator end )
+{
+  auto v1 = recursive_deref<Ntk, LeavesIterator, NodeCostFn>( ntk, n, begin, end  );
+  auto v2 = recursive_ref<Ntk, LeavesIterator, NodeCostFn>( ntk, n, begin, end );
+  assert( v1 == v2 );
+  (void)v2;
+  return v1;
+}
+
 } /* namespace mockturtle::detail */

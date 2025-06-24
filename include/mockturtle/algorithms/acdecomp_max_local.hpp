@@ -1,5 +1,7 @@
 #pragma once
 
+#include "mc_analyzer.hpp"
+
 #include <kitty/constructors.hpp>
 #include <kitty/dynamic_truth_table.hpp>
 #include <kitty/operations.hpp>
@@ -13,16 +15,12 @@
 namespace mockturtle
 {
 
+class mc_analyzer;
+
 struct acdecomp_max_local_params
 {
 	uint32_t lut_size = 6u; /* `lut_size` has to be no larger than six, as required by the synthesis engine */
 	uint32_t max_free_set_size = 4u;
-};
-
-struct decomp_result
-{
-	kitty::dynamic_truth_table tt;
-	std::vector<uint32_t> support;
 };
 
 class acdecomp_max_local
@@ -58,7 +56,7 @@ public:
 			const uint32_t ownerships_i_size = ownerships[i].size();
 
       /* for debugging */
-      fmt::print( "[m] Trying to put {} leaves in the free set (max. {})...\n", ownerships_i_size, _ps.max_free_set_size );
+      // fmt::print( "[m] Trying to put {} leaves in the free set (max. {})...\n", ownerships_i_size, _ps.max_free_set_size );
 
 			if ( ownerships_i_size > _ps.max_free_set_size )
 			{
@@ -70,23 +68,23 @@ public:
 			push_into_free_set( ownerships[i] );
 
       /* for debugging */
-      fmt::print( "[m] The original truth table is " );
-      kitty::print_hex( _tt_orig );
-      fmt::print( ", the reordered one is " );
-      kitty::print_hex( _tt_res );
-      fmt::print( "\n" );
+      // fmt::print( "[m] The original truth table is " );
+      // kitty::print_hex( _tt_orig );
+      // fmt::print( ", the reordered one is " );
+      // kitty::print_hex( _tt_res );
+      // fmt::print( "\n" );
 
 			if ( check_multiplicity( ownerships[i] ) )
 			{
         /* for debugging */
-        fmt::print( "[m] Multiplicity is {} (max. {}). A good deal...\n", _multiplicity, ( 1 << ( _ps.lut_size - _free_set_size ) ) );
+        // fmt::print( "[m] Multiplicity is {} (max. {}). A good deal...\n", _multiplicity, ( 1 << ( _ps.lut_size - _free_set_size ) ) );
 
 				return true;
 			}
-      else
-      {
-         fmt::print( "[m] Multiplicity is {} (max. {}). Miu is too high!\n", _multiplicity, ( 1 << ( _ps.lut_size - _free_set_size ) ) );
-      }
+      // else
+      // {
+      //   fmt::print( "[m] Multiplicity is {} (max. {}). Miu is too high!\n", _multiplicity, ( 1 << ( _ps.lut_size - _free_set_size ) ) );
+      // }
 		}
 	
 		return false;
@@ -152,7 +150,7 @@ public:
 		// compute_top_lut();
 
     /* for debugging */
-    fmt::print( "[m] Require {} bound set functions.\n", _bound_set.size() );
+    // fmt::print( "[m] Require {} bound set functions.\n", _bound_set.size() );
 
     _decomp_res.clear();
 
@@ -186,31 +184,93 @@ public:
       _decomp_res.push_back( dec );
 
       /* for debugging */
-      if ( dec.support.size() == 0u )
-      {
-        fmt::print( "[e] Weird, a BS function is without support, the function is " );
-        kitty::print_hex( _bound_set[i] );
-        fmt::print( "\n" );
-      }
-      else
-      {
-        fmt::print( "[m] A BS function is added. Its support is: " );
-        for ( auto const& ele : dec.support )
-        {
-          fmt::print( "{} ", ele );
-        }
-        fmt::print( "; its function is " );
-        kitty::print_hex( dec.tt );
-        fmt::print( "\n" );
-      }
+      // if ( dec.support.size() == 0u )
+      // {
+      //   fmt::print( "[e] Weird, a BS function is without support, the function is " );
+      //   kitty::print_hex( _bound_set[i] );
+      //   fmt::print( "\n" );
+      // }
+      // else
+      // {
+      //   fmt::print( "[m] A BS function is added. Its support is: " );
+      //   for ( auto const& ele : dec.support )
+      //   {
+      //     fmt::print( "{} ", ele );
+      //   }
+      //   fmt::print( "; its function is " );
+      //   kitty::print_hex( dec.tt );
+      //   fmt::print( "\n" );
+      // }
     }
 
     /* for debugging */
-    fmt::print( "{} bound set functions added\n", _decomp_res.size() );
+    // fmt::print( "{} bound set functions added\n", _decomp_res.size() );
 
     /* compute the decomposition for the top-level LUT */
     compute_top_lut();
 	}
+
+  int32_t multi_run( mc_analyzer& mc_engine, std::vector<std::vector<uint32_t>> ownerships )
+  {
+    std::vector<decomp_result> best_decomp_res{};
+    bool is_first_solution{ true };
+    uint32_t best_cost{ 0u }; 
+
+    if ( _num_vars > _ps.max_free_set_size + _ps.lut_size )
+    {
+      _ps.max_free_set_size = _num_vars - _ps.lut_size;
+    }
+
+    for ( uint32_t i = 1u; i < ownerships.size(); ++i )
+    {
+      const uint32_t ownerships_i_size = ownerships[i].size();
+      if ( ownerships_i_size > _ps.max_free_set_size )
+			{
+				continue;
+			}
+
+      std::copy( _tt_orig.begin(), _tt_orig.end(), _tt_res.begin() );
+      std::iota( _perm.begin(), _perm.end(), 0u );
+			push_into_free_set( ownerships[i] );
+
+      if ( check_multiplicity( ownerships[i] ) )
+      {
+        std::vector<TT> isets = compute_isets();
+        compute_encodings();
+
+        bool success_decomp = ( _multiplicity <= 4u ) ? solve_encoding_exact( isets ) : solve_encoding_heuristic( isets );
+        if ( !success_decomp )
+        {
+          continue;
+        }
+
+        get_decomp();
+        if ( is_first_solution )
+        {
+          int32_t current_cost = mc_engine.estimate_decomp_res_cost( _decomp_res, _num_vars, ownerships );
+          if ( current_cost >= 0 )
+          {
+            is_first_solution = false;
+            best_cost = static_cast<uint32_t>( current_cost ) + _multiplicity;
+            best_decomp_res = _decomp_res;
+          }
+        }
+        else
+        {
+          int32_t current_cost = mc_engine.estimate_decomp_res_cost( _decomp_res, _num_vars, ownerships );
+          if ( ( current_cost >= 0 ) && ( ( static_cast<uint32_t>( current_cost ) + _multiplicity ) < best_cost ) )
+          {
+            best_cost = static_cast<uint32_t>( current_cost ) + _multiplicity;
+            best_decomp_res = _decomp_res;
+          }
+        }
+      }
+    }
+
+    _decomp_res = best_decomp_res;
+
+    return is_first_solution ? -1 : static_cast<int32_t>( best_cost );
+  }
 
 private:
 	inline void push_into_free_set( std::vector<uint32_t> const& indices )
@@ -317,7 +377,7 @@ private:
 
     /* extract iset functions */
     /* for debugging */
-    fmt::print( "[m] Figuring out the multiplicity...\n" );
+    // fmt::print( "[m] Figuring out the multiplicity...\n" );
     const uint32_t len = ( num_blocks == 1u ) ? ( 1 << ( _num_vars - _free_set_size ) ) : ( 64u >> _free_set_size ); 
     for ( auto i = 0u; i < num_blocks; ++i )
     {
@@ -325,19 +385,19 @@ private:
       for ( auto j = 0; j < len; ++j )
       {
         uint64_t& repr = multiplicity_set[( cof >> 6 ) & masks_idx[_free_set_size]];
-        uint64_t temp = repr;
+        // uint64_t temp = repr;
         repr |= ( uint64_t( 1 ) << ( cof & masks_bits[_free_set_size] ) );
-        if ( repr != temp )
-        {
-          fmt::print( "[m] new pattern ({}) detected, increasing multiplicity...\n", ( cof & masks_bits[_free_set_size] ) );
-        }
+        // if ( repr != temp )
+        // {
+        //   fmt::print( "[m] new pattern ({}) detected, increasing multiplicity...\n", ( cof & masks_bits[_free_set_size] ) );
+        // }
         cof >>= ( 1u << _free_set_size );
       }
     }
 
     multiplicity = __builtin_popcountl( multiplicity_set[0] );
 
-    fmt::print( "[m] The multiplicity is calculated to be {}\n", multiplicity );
+    // fmt::print( "[m] The multiplicity is calculated to be {}\n", multiplicity );
 
     if ( _free_set_size == 3 )
     {
@@ -358,10 +418,11 @@ private:
 		uint32_t multiplicity_set_size = 0u;
 
 		uint64_t fs_func_prev = UINT64_MAX;
+    const uint32_t len = ( num_blocks == 1u ) ? ( 1 << ( _num_vars - _free_set_size ) ) : ( 64u >> _free_set_size ); 
 		for ( uint32_t i = 0u; i < num_blocks; ++i )
 		{
 			uint64_t coef = tt._bits[i];
-			for ( uint32_t j = 0u; j < ( 64 >> free_set_size ); ++j )
+			for ( uint32_t j = 0u; j < len; ++j )
 			{
 				uint64_t fs_func = coef & masks[free_set_size];
 				if ( fs_func != fs_func_prev )
@@ -459,9 +520,10 @@ private:
     uint64_t constexpr masks[] = { 0x0, 0x3, 0xF, 0xFF, 0xFFFF, 0xFFFFFFFF };
 
     auto it = std::begin( tt );
+    const uint32_t len = ( num_blocks == 1u ) ? ( 1 << ( _num_vars - _free_set_size ) ) : ( 64u >> _free_set_size ); 
     for ( auto i = 0u; i < num_blocks; ++i )
     {
-      for ( auto j = 0; j < ( 64 >> _free_set_size ); ++j )
+      for ( auto j = 0; j < len; ++j )
       {
         uint64_t val = *it & masks[_free_set_size];
 
@@ -472,6 +534,7 @@ private:
         }
         else
         {
+          assert( column_to_iset.size() < _multiplicity );
           isets[column_to_iset.size()]._bits[i / ( 1u << _free_set_size )] |= UINT64_C( 1 ) << ( j + offset );
           column_to_iset[val] = column_to_iset.size();
         }
@@ -501,13 +564,13 @@ private:
     _free_set = std::move( free_set_tts );
 
     /* for debugging */
-    fmt::print( "[m] isets: \n" );
-    for ( auto i = 0u; i < isets.size(); ++i )
-    {
-      fmt::print( "[m] The {}-th iset is ", ( i + 1 ) );
-      kitty::print_hex( isets[i] );
-      fmt::print( "\n" );
-    }
+    // fmt::print( "[m] isets: \n" );
+    // for ( auto i = 0u; i < isets.size(); ++i )
+    // {
+    //   fmt::print( "[m] The {}-th iset is ", ( i + 1 ) );
+    //   kitty::print_hex( isets[i] );
+    //   fmt::print( "\n" );
+    // }
 
 		return isets;
 	}
@@ -700,7 +763,7 @@ private:
       ++count;
 
       /* for debugging */
-      fmt::print( "[m] Adding the {}th code: onset is {}, offset is {}.\n", count, onset, offset );
+      // fmt::print( "[m] Adding the {}th code: onset is {}, offset is {}.\n", count, onset, offset );
 
       return;
     }
@@ -820,9 +883,9 @@ private:
       _isets_offset.push_back( offset );
 
       /* for debugging */
-      fmt::print( "[m] A raw BS function: " );
-      kitty::print_hex( tt );
-      fmt::print( "\n" );
+      // fmt::print( "[m] A raw BS function: " );
+      // kitty::print_hex( tt );
+      // fmt::print( "\n" );
     }
 
     /* for debugging */
@@ -1366,7 +1429,7 @@ private:
 		assert( num_top_vars <= _ps.lut_size );
 
     /* for debugging */
-    fmt::print( "[m] Top LUT support size is {}\n", num_top_vars );
+    // fmt::print( "[m] Top LUT support size is {}\n", num_top_vars );
 
 		kitty::dynamic_truth_table tt( num_top_vars );
 		decomp_result decomp_res;
@@ -1385,7 +1448,7 @@ private:
 			kitty::create_nth_var( bs_vars[i], _free_set_size + i );
 
       /* for debugging */
-      fmt::print( "[m] The {}th BS function's support size is {}\n", ( i + 1 ), decomp_res_i.support.size() );
+      // fmt::print( "[m] The {}th BS function's support size is {}\n", ( i + 1 ), decomp_res_i.support.size() );
 
 			/* Add BS variables to the support of `decomp_res` */
 			/* remove trivial BS function (buffer) */
@@ -1401,7 +1464,7 @@ private:
         ++offset;
 
         /* for debugging */
-        fmt::print( "[m] Has a trivial BS function, removed.\n" );
+        // fmt::print( "[m] Has a trivial BS function, removed.\n" );
 			}
 			else
 			{
@@ -1438,12 +1501,12 @@ private:
 		_decomp_res.push_back( decomp_res );
 
     /* for debugging */
-    fmt::print( "[m] Supports of the top LUT are the " );
-    for ( auto const& each_sup : decomp_res.support )
-    {
-      fmt::print( "{}th ", each_sup );
-    }
-    fmt::print( "signals\n" );
+    // fmt::print( "[m] Supports of the top LUT are the " );
+    // for ( auto const& each_sup : decomp_res.support )
+    // {
+    //   fmt::print( "{}th ", each_sup );
+    // }
+    // fmt::print( "signals\n" );
 
     /* for debugging */
     // if ( ( _decomp_res.size() - 1 ) != _bound_set.size() )

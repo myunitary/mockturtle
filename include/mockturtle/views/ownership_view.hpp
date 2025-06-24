@@ -212,20 +212,41 @@ public:
   using node = typename Ntk::node;
   using signal = typename Ntk::signal;
 
-  explicit owner_view( Ntk const& ntk, std::vector<uint32_t> pis_ownership = {} )
+  explicit owner_view()
+    : Ntk(),
+      _ownerships( *this )
+  {
+    static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
+    static_assert( has_size_v<Ntk>, "Ntk does not implement the size method" );
+    static_assert( has_num_pos_v<Ntk>, "Ntk does not implement the num_pos method" );
+    static_assert( has_foreach_pi_v<Ntk>, "Ntk does not implement the foreach_pi method" );
+    static_assert( has_foreach_node_v<Ntk>, "Ntk does not implement the foreach_node method" );
+    static_assert( has_foreach_fanin_v<Ntk>, "Ntk does not implement the foreach_fanin method" );
+
+    add_event = Ntk::events().register_add_event( [this]( auto const& n ) { on_add( n ); } );
+  }
+
+  explicit owner_view( Ntk const& ntk, std::vector<uint32_t> pis_ownership = {}, bool per_pi_ownership = false )
     : Ntk( ntk ),
       _ownerships( ntk )
   {
     static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
     static_assert( has_size_v<Ntk>, "Ntk does not implement the size method" );
-    static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node method" );
+    static_assert( has_num_pos_v<Ntk>, "Ntk does not implement the num_pos method" );
     static_assert( has_foreach_pi_v<Ntk>, "Ntk does not implement the foreach_pi method" );
     static_assert( has_foreach_node_v<Ntk>, "Ntk does not implement the foreach_node method" );
     static_assert( has_foreach_fanin_v<Ntk>, "Ntk does not implement the foreach_fanin method" );
 
     init_ownership();
-    assign_ownership( pis_ownership );
-
+    if ( !per_pi_ownership )
+    {
+      assign_ownership( pis_ownership );
+    }
+    else
+    {
+      assign_ownership_per_pi( pis_ownership );
+    }
+    
     add_event = Ntk::events().register_add_event( [this]( auto const& n ) { on_add( n ); } );
   }
 
@@ -250,6 +271,30 @@ public:
   ~owner_view()
   {
     Ntk::events().release_add_event( add_event );
+  }
+
+  Ntk toNtk() const
+  {
+    Ntk ntk;
+    node_map<typename Ntk::signal, owner_view<Ntk>> old_to_new{ *this };
+    old_to_new[this->get_constant( false )] = ntk.get_constant( false );
+    this->foreach_pi( [&]( auto const& pi ) {
+      auto new_pi = ntk.create_pi();
+      old_to_new[pi] = new_pi;
+    } );
+    topo_view{ *this }.foreach_gate( [&]( auto const& n, auto index ) {
+      /* this implementation is dedicated for 2-in-degree DAGs */
+      std::vector<signal> children_old = { this->_storage->nodes[n].children[0], this->_storage->nodes[n].children[1] };
+      std::vector<typename Ntk::signal> children_new = { ntk.get_constant( false ), ntk.get_constant( false ) };
+      children_new[0] = this->is_complemented( children_old[0] ) ? ntk.create_not( old_to_new[children_old[0]] ) : old_to_new[children_old[0]];
+      children_new[1] = this->is_complemented( children_old[1] ) ? ntk.create_not( old_to_new[children_old[1]] ) : old_to_new[children_old[1]];
+      old_to_new[n] = ntk.clone_node( *this, n, children_new);
+    } );
+    this->foreach_po( [&]( auto const& po ) {
+      ntk.create_po( this->is_complemented( po ) ? ntk.create_not( old_to_new[this->get_node( po )] ) : old_to_new[this->get_node( po )] );
+    } );
+
+    return ntk;
   }
 
   void init_ownership()
@@ -314,7 +359,34 @@ public:
       }
     }
 
-    propogate_ownership();
+    if ( this->num_pos() > 0u )
+    {
+      /* a complete network */
+      propogate_ownership();
+    }
+    else
+    {
+      /* an under-construction network */
+      propogate_ownership_interm();
+    }  
+  }
+
+  void assign_ownership_per_pi( std::vector<uint32_t> pis_ownership )
+  {
+    this->incr_trav_id();
+    assert( pis_ownership.size() == this->num_pis() );
+    this->foreach_pi( [&]( auto const& pi, auto index ) {
+      assign_ownership_local( pi, pis_ownership[index] );
+    } );
+
+    if ( this->num_pos() > 0u )
+    {
+      propogate_ownership();
+    }
+    else
+    {
+      propogate_ownership_interm();
+    }
   }
 
   void propogate_ownership()
@@ -324,19 +396,38 @@ public:
       {
         return true;
       }
+      propogate_ownership_local( n );
+      return true;
+    } );
+  }
+
+  /* ownership propogation approach for intermediate (i.e., under construction) network */
+  /* thus, it's assumed that the incomplete network is inherently topological */
+  void propogate_ownership_interm()
+  {
+    this->foreach_node( [this]( auto const& n ) {
+      if ( this->is_constant( n ) || this->is_pi( n ) )
+      {
+        return true;
+      }
 
       uint32_t ownership = 0u;
-      /* for debugging */
-      // fmt::print( "[m] Assigning ( " );
       this->foreach_fanin( n, [&]( auto const& fi ) {
         ownership |= this->get_ownership( this->get_node( fi ) );
-        // fmt::print( "{} ", this->get_ownership( this->get_node( fi ) ) );
       } );
-      // fmt::print( "= {} ) {} as the ownership to Node {}...\n", ownership, ownership, ( this->node_to_index( n ) ) );
 
       this->assign_ownership_local( n, ownership );
       return true;
     } );
+  }
+
+  void propogate_ownership_local( node const& n )
+  {
+    uint32_t ownership = 0u;
+    this->foreach_fanin( n, [&]( auto const& fi ) {
+      ownership |= this->get_ownership( this->get_node( fi ) );
+    } );
+    this->assign_ownership_local( n, ownership );
   }
 
   void assign_ownership_local( node const& n, uint32_t ownership )
@@ -392,6 +483,11 @@ public:
       fmt::print( "Node{}({}) ", ( i + 1 ), _ownerships[n] );
     } );
     fmt::print( "\n" );
+  }
+
+  void resize_ownerships()
+  {
+    _ownerships.resize();
   }
 
 private:
