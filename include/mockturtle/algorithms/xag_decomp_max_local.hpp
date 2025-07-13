@@ -60,6 +60,54 @@ struct xag_decomp_max_local_stats
   uint32_t cost_optimal = 0u;
 };
 
+std::vector<uint32_t> identify_frontier( xag_network const& ntk, uint8_t num_parties, std::vector<uint32_t> const& pis_ownership = {}, bool per_pi_ownership = false )
+{
+  bool first = true;
+  std::vector<uint32_t> num_pis_new( num_parties );
+  mockturtle::owner_view<mockturtle::xag_network> ntk_mpc( ntk, num_parties, pis_ownership, per_pi_ownership );
+  mockturtle::fanout_view<mockturtle::owner_view<mockturtle::xag_network>> ntk_mpc_fo{ ntk_mpc };
+  // mockturtle::topo_view<mockturtle::fanout_view<mockturtle::owner_view<mockturtle::xag_network>>>{ ntk_mpc_fo }.foreach_node( [&] ( auto const& n ) {
+  ntk_mpc_fo.foreach_node( [&] ( auto const& n ) {
+    // fmt::print( "[m] Working on {}{}...\n", ( ntk_mpc_fo.is_pi( n ) ? "PI" : "n" ), ntk_mpc_fo.node_to_index( n ) );
+    if ( ntk_mpc_fo.is_constant( n ) )
+    {
+      return true;
+    }
+
+    uint8_t party_id = ntk_mpc_fo.is_local( n );
+    assert( party_id <= num_parties );
+    if ( party_id == 0u )
+    {
+      // fmt::print( "[m] Node n{} is NOT a frontier node, because it is jointly derived.\n", ntk_mpc_fo.node_to_index( n ) );
+      return true;
+    }
+
+    if ( first && !ntk_mpc_fo.is_pi( n ) )
+    {
+      // fmt::print( "[m] n{} = {}( {}{}, {}{} )\n", ntk_mpc_fo.node_to_index( n ), ( ntk_mpc_fo.is_and( n ) ? "AND" : "XOR" ), ( ntk_mpc_fo.is_pi( ntk_mpc_fo.get_node( ntk_mpc_fo._storage->nodes[n].children[0] ) ) ? "pi" : "n" ), ( ntk_mpc_fo.node_to_index( ntk_mpc_fo.get_node( ntk_mpc_fo._storage->nodes[n].children[0] ) ) ), ( ntk_mpc_fo.is_pi( ntk_mpc_fo.get_node( ntk_mpc_fo._storage->nodes[n].children[1] ) ) ? "pi" : "n" ), ( ntk_mpc_fo.node_to_index( ntk_mpc_fo.get_node( ntk_mpc_fo._storage->nodes[n].children[1] ) ) ) );
+      first = false;
+    }
+
+    /* conditions for being a node that forms the frontier: */
+    /* 1. the node itself is local */
+    /* 2. the node contributes to a joint node */
+    ntk_mpc_fo.foreach_fanout( n, [&]( auto const& n_fo ) {
+      if ( ntk_mpc_fo.is_local( n_fo ) == 0u )
+      {
+        ++num_pis_new[party_id - 1];
+        // fmt::print( "[m] Node {}{} is a frontier node from the {}-th party.\n", ( ntk_mpc_fo.is_pi( n ) ? "PI" : "n" ) , ntk_mpc_fo.node_to_index( n ), party_id );
+        return false;
+      }
+      return true;
+    } );
+
+    // fmt::print( "[m] Node {}{} is NOT a frontier node, because its fanouts are locally derivable as well.\n", ( ntk_mpc_fo.is_pi( n ) ? "PI" : "n" ) , ntk_mpc_fo.node_to_index( n ) );
+    return true;
+  } );
+
+  return num_pis_new;
+}
+
 class xag_decomp_max_local
 {
 public:
@@ -76,7 +124,7 @@ public:
   {
     xag_network res{};
     node_map<xag_network::signal, xag_network> old_to_new{ _ntk };
-    mpc_network ntk_os{ _ntk };
+    mpc_network ntk_os( _ntk, _num_parties );
     detail::initialize_values_with_fanout( ntk_os );
     _st.cost_original = costs<mpc_network, mc_mpc_cost>( ntk_os );
 
@@ -179,6 +227,7 @@ public:
 
         /* calculate the cost of current implementation */
         const uint32_t cost_cut_current = detail::mffc_size<mpc_network, decltype( leaves.begin() ), mc_mpc_cost>( ntk_os, n, leaves.begin(), leaves.end() );
+        // const uint32_t cost_cut_current = detail::mffc_size<mpc_network, mc_mpc_cost>( ntk_os, n );
         if ( cost_cut_current == 0u )
         {
           continue;
@@ -234,12 +283,12 @@ public:
 
         /* address the discrepancy within the obrained solution `acd_max_local._decomp_res`: */
         /* the available index vector `ownerships` and the required leaf node vector `children` */
-        xag_network::signal impl_new = _mc_analyzer.min_mc_resyn( res, children, acd_max_local._decomp_res );
+        xag_network::signal impl_new = _mc_analyzer.min_mc_resyn( res, children, { acd_max_local._decomp_fs, acd_max_local._decomp_bs }, acd_max_local._encodings, acd_max_local._sel_polar );
         if ( res.is_constant( res.get_node( impl_new ) ) )
         {
           continue;
         }
-        mpc_network res_os( res, pi_ownerships );
+        mpc_network res_os( res, _num_parties, pi_ownerships );
         const xag_network::node impl_new_node = res_os.get_node( impl_new );
         // detail::recursive_deref<mpc_network, mc_mpc_cost>( res_os, impl_new_node );
         assert( res_os.value( impl_new_node ) == 0u );
@@ -265,11 +314,19 @@ public:
         //   abort();
         // }
 
+        /* for debugging */
+        // fmt::print( "[m] Root of the current cut is n{}; Old cost is {}; New cost is {}\n", _ntk.node_to_index( n ), cost_cut_current, cost_cut_new );
+        // fmt::print( "[m] Leaves of the current cut are [ " );
+        // for ( auto const& each_leaf : leaves )
+        // {
+        //   fmt::print( "{}{} ", ( _ntk.is_pi( each_leaf ) ? "pi" : "n" ) , ( _ntk.node_to_index( each_leaf ) ) );
+        // }
+        // fmt::print( "]\n" );
+
         if ( gain > gain_best )
         {
           impl_best = impl_new;
           gain_best = gain;
-          ++_st.num_better_impl;
           // fmt::print( "[m] Found a better {}-cut implementation that reduces local cost from {} to {}\n", children.size(), cost_cut_current, cost_cut_new );
         }
       }
@@ -287,6 +344,7 @@ public:
       else
       {
         old_to_new[n] = impl_best;
+        ++_st.num_better_impl;
       }
 
       detail::recursive_ref<xag_network>( res, res.get_node( old_to_new[n] ) );
@@ -302,8 +360,8 @@ public:
     xag_network res_cleanup = cleanup_dangling<xag_network>( res );
     // mpc_network res_cleanup_os( res_cleanup, pi_ownerships );
     // _st.cost_optimal = costs<mpc_network, mc_mpc_cost>( res_cleanup_os );
-    _st.cost_optimal = costs<mpc_network, mc_mpc_cost>( mpc_network( res_cleanup, pi_ownerships ) );
-    return ( _st.cost_optimal < _st.cost_original ) ? res : _ntk;
+    _st.cost_optimal = costs<mpc_network, mc_mpc_cost>( mpc_network( res_cleanup, _num_parties, pi_ownerships ) );
+    return ( _st.cost_optimal < _st.cost_original ) ? res_cleanup : _ntk;
   }
 
 private:
@@ -361,10 +419,15 @@ public:
         return;
       }
 
+      /* for debugging */
+      // fmt::print( "[m] Working on n{}...\n", _ntk.node_to_index( n ) );
+
       int32_t gain_best = 0;
       uint32_t cut_index = 0u;
       uint32_t cut_best_index = 0u;
-      std::vector<decomp_result> decomp_res_best{};
+      std::array<std::vector<decomp_result>, 2u> decomp_res_best{};
+      std::vector<masked_encoding> encodings_best{};
+      uint8_t sel_polar_best{};
       cut_manager.clear_cuts( n );
       cut_manager.compute_cuts( n );
       
@@ -372,10 +435,18 @@ public:
       {
         ++_st.num_cuts;
         ++cut_index; /* the real index is ( `cut_index` - 1 ) */
-        if ( cut->size() <= 2u || kitty::is_const0( cuts.truth_table( *cut ) ) )
+        if ( cut->size() <= 3u || kitty::is_const0( cuts.truth_table( *cut ) ) )
         {
           continue;
         }
+
+        /* for debugging */
+        // fmt::print( "[m] root : node {}, leaves ({}) : ", _ntk.node_to_index( n ), cut->size() );
+        // for ( auto leaf : *cut )
+        // {
+        //   fmt::print( "node {}; ", leaf );
+        // }
+        // fmt::print( "\n" );
         
         kitty::dynamic_truth_table tt( cut->size() );
         /* `cut->size()` <= 8u */
@@ -435,7 +506,10 @@ public:
         {
           gain_best = gain;
           cut_best_index = cut_index;
-          decomp_res_best = acd_max_local._decomp_res;
+          decomp_res_best = { acd_max_local._decomp_fs, acd_max_local._decomp_bs };
+          encodings_best = acd_max_local._encodings;
+          sel_polar_best = acd_max_local._sel_polar;
+          // fmt::print( "[m] current best implementation for node {} has {} BS functions and {} FS functions\n", _ntk.node_to_index( n ), ( decomp_res_best[1].size() - 1 ), ( decomp_res_best[0].size() ) );
         }
         // measure_mffc_ref( n, cut );
 
@@ -453,7 +527,7 @@ public:
 
       if ( cut_best_index != 0u )
       {
-        fmt::print( "[m] Network rewriting is happening\n" );
+        // fmt::print( "[m] Network rewriting is happening\n" );
         auto best_cut = cuts.cuts( _ntk.node_to_index( n ) )[cut_best_index - 1];
         kitty::dynamic_truth_table tt( best_cut.size() );
         // std::copy( cuts.truth_table( best_cut ).begin(), cuts.truth_table( best_cut ).begin() + tt.num_blocks(), tt.begin() );
@@ -474,10 +548,28 @@ public:
         // auto pi0 = _ntk.make_signal( _ntk.pi_at( 0u ) );
         // _ntk.create_xor( pi0, _ntk.make_signal( n ) );
         // fmt::print( "[m] Size of `_ntk` is {}\n", _ntk.size() );
-        mpc_network::signal n_new_impl = _mc_analyzer.min_mc_resyn_mpc( _ntk, children, decomp_res_best );
+        mpc_network::signal n_new_impl = _mc_analyzer.min_mc_resyn_mpc( _ntk, children, decomp_res_best, encodings_best, sel_polar_best );
+        // fmt::print( "[m] the new implementation replacing node {} is node {}\n", _ntk.node_to_index( n ), _ntk.node_to_index( _ntk.get_node( n_new_impl ) ) );
+
+        /* for debugging */
+        // std::vector<node> leaves_alt( 8u, _ntk.get_node( _ntk.get_constant( false ) ) );
+        // std::copy( leaves.begin(), leaves.end(), leaves_alt.begin() );
+        // cut_view<mpc_network> new_impl{ _ntk, leaves_alt, n_new_impl };
+        // kitty::static_truth_table<8u> tt_new_impl = simulate<kitty::static_truth_table<8u>>( new_impl )[0];
+        // const auto tt_ext = kitty::extend_to<8u>( tt );
+        // if ( tt_new_impl != tt_ext )
+        // {
+        //   fmt::print( "[m] target truth table is " );
+        //   kitty::print_hex( tt_ext );
+        //   fmt::print( ", get " );
+        //   kitty::print_hex( tt_new_impl );
+        //   fmt::print( "\n" );
+        //   abort();
+        // }
+
         detail::recursive_deref<mpc_network, decltype( leaves.begin() ), mc_mpc_cost>( _ntk, n, leaves.begin(), leaves.end() );
         detail::recursive_ref<mpc_network, decltype( leaves.begin() ), mc_mpc_cost>( _ntk, _ntk.get_node( n_new_impl ), leaves.begin(), leaves.end() );
-        // detail::recursive_deref<mpc_network>( _ntk, n);
+        // detail::recursive_deref<mpc_network>( _ntk, n );
         // detail::recursive_ref<mpc_network>( _ntk, _ntk.get_node( n_new_impl ) );
         _ntk.substitute_node_no_restrash( n, n_new_impl );
         clear_cuts_fanout_rec( cuts, cut_manager, _ntk.get_node( n_new_impl ) );
@@ -516,7 +608,9 @@ public:
       int32_t gain_best = 0;
       uint32_t cut_index = 0u;
       uint32_t cut_best_index = 0u;
-      std::vector<decomp_result> decomp_res_best{};
+      std::array<std::vector<decomp_result>, 2u> decomp_res_best{};
+      std::vector<masked_encoding> encodings_best{};
+      uint8_t sel_polar_best{};
       cut_manager.clear_cuts( n );
       cut_manager.compute_cuts( n );
       
@@ -585,7 +679,9 @@ public:
         {
           gain_best = gain;
           cut_best_index = cut_index;
-          decomp_res_best = acd_max_local._decomp_res;
+          decomp_res_best = { acd_max_local._decomp_fs, acd_max_local._decomp_bs };
+          encodings_best = acd_max_local._encodings;
+          sel_polar_best = acd_max_local._sel_polar;
         }
         // measure_mffc_ref( n, cut );
 
@@ -618,7 +714,7 @@ public:
           ++ctr;
         }
 
-        mpc_network::signal n_new_impl = _mc_analyzer.min_mc_resyn_mpc( _ntk, children, decomp_res_best );
+        mpc_network::signal n_new_impl = _mc_analyzer.min_mc_resyn_mpc( _ntk, children, decomp_res_best, encodings_best, sel_polar_best );
         detail::recursive_deref<mpc_network, decltype( leaves.begin() ), mc_mpc_cost>( _ntk, n, leaves.begin(), leaves.end() );
         detail::recursive_ref<mpc_network, decltype( leaves.begin() ), mc_mpc_cost>( _ntk, _ntk.get_node( n_new_impl ), leaves.begin(), leaves.end() );
         _ntk.substitute_node_no_restrash( n, n_new_impl );

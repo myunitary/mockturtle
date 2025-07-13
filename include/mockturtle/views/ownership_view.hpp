@@ -16,8 +16,9 @@ public:
   using node = typename Ntk::node;
   using signal = typename Ntk::signal;
 
-  explicit ownership_view( Ntk const& ntk )
-    : Ntk( ntk )
+  explicit ownership_view( Ntk const& ntk, uint32_t num_parties = 2u )
+    : Ntk( ntk ),
+      _num_parties( num_parties )
   {
     static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
     static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node method" );
@@ -25,6 +26,8 @@ public:
     static_assert( has_is_dead_v<Ntk>, "Ntk does not implement the is_dead method" );
     static_assert( has_is_pi_v<Ntk>, "Ntk does not implement the is_pi method" );
     static_assert( has_num_pis_v<Ntk>, "Ntk does not implement the num_pis method" );
+
+    assert( _num_parties <= 32u );
 
     init_ownership();
   }
@@ -47,12 +50,12 @@ public:
     {
       /* default PI ownership assignment */
       fmt::print( "[i] Primary input ownership unavaialable. " );
-      fmt::print( "Assuming a symmetric two-party setting...\n" );
+      fmt::print( "Assuming a symmetric {}-party setting...\n", _num_parties );
 
-      threshold = num_pis / 2;
+      threshold = num_pis / _num_parties;
       uint32_t index = 0u;
       std::for_each( this->_storage->inputs.begin(), this->_storage->inputs.end(), [&]( auto& n ) {
-        if ( ( index >= threshold ) && !party_ind )
+        if ( ( index % threshold == 0u ) && ( index != 0u ) )
         {
           ++party_ind;
         }
@@ -202,6 +205,9 @@ public:
       return create_xor( children[0u], children[1u] );
     }
   }
+
+private:
+  uint32_t _num_parties;
 };
 
 template<typename Ntk>
@@ -212,8 +218,9 @@ public:
   using node = typename Ntk::node;
   using signal = typename Ntk::signal;
 
-  explicit owner_view()
+  explicit owner_view( uint32_t num_parties = 2u )
     : Ntk(),
+      _num_parties( num_parties ),
       _ownerships( *this )
   {
     static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
@@ -223,11 +230,17 @@ public:
     static_assert( has_foreach_node_v<Ntk>, "Ntk does not implement the foreach_node method" );
     static_assert( has_foreach_fanin_v<Ntk>, "Ntk does not implement the foreach_fanin method" );
 
+    assert( _num_parties <= 32u );
+
     add_event = Ntk::events().register_add_event( [this]( auto const& n ) { on_add( n ); } );
   }
 
-  explicit owner_view( Ntk const& ntk, std::vector<uint32_t> pis_ownership = {}, bool per_pi_ownership = false )
+  /* `per_pi_ownership` controls how the passed `pis_ownership` shall be interpreted: */
+  /* If is false, the i-th entry indicates "the number of pis belonging to the i-th party"; */
+  /* If is true, the i-th entry indicates "the ownership of the i-th pi." */
+  explicit owner_view( Ntk const& ntk, uint32_t num_parties = 2u, std::vector<uint32_t> pis_ownership = {}, bool per_pi_ownership = false )
     : Ntk( ntk ),
+      _num_parties( num_parties ),
       _ownerships( ntk )
   {
     static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
@@ -236,6 +249,8 @@ public:
     static_assert( has_foreach_pi_v<Ntk>, "Ntk does not implement the foreach_pi method" );
     static_assert( has_foreach_node_v<Ntk>, "Ntk does not implement the foreach_node method" );
     static_assert( has_foreach_fanin_v<Ntk>, "Ntk does not implement the foreach_fanin method" );
+
+    assert( _num_parties <= 32u );
 
     init_ownership();
     if ( !per_pi_ownership )
@@ -252,6 +267,7 @@ public:
 
   owner_view( owner_view<Ntk> const& other )
     : Ntk( other ),
+      _num_parties( other._num_parties ),
       _ownerships( other._ownerships )
   {
     add_event = Ntk::events().register_add_event( [this]( auto const& n ) { on_add( n ); } );
@@ -260,9 +276,10 @@ public:
   owner_view<Ntk>& operator=( owner_view<Ntk> const& other )
   {
     Ntk::events().release_add_event( add_event );
+    this->_num_parties = other._num_parties;
+    this->_ownerships = other._ownerships;
     this->_storage = other._storage;
     this->_events = other._events;
-    _ownerships = other._ownerships;
     add_event = Ntk::events().register_add_event( [this]( auto const& n ) { on_add( n ); } );
 
     return *this;
@@ -312,11 +329,11 @@ public:
     {
       /* default PI ownership assignment */
       fmt::print( "[i] Primary input ownership unavaialable. " );
-      fmt::print( "Assuming a symmetric two-party setting...\n" );
+      fmt::print( "Assuming a symmetric {}-party setting...\n", _num_parties );
 
-      threshold = num_pis / 2;
+      threshold = num_pis / _num_parties;
       this->foreach_pi( [&]( auto const& pi, auto index ) {
-        if ( ( index >= threshold ) && ( party_ind == 0u ) )
+        if ( ( index % threshold == 0u ) && ( index != 0u ) )
         {
           ++party_ind;
         }
@@ -330,14 +347,13 @@ public:
     {
       /* user-specified PI ownership assignment */
       /* [3,1,2] */
-      uint8_t num_parties = pis_ownership.size();
-      assert( num_parties <= 32u );
+      assert( _num_parties == pis_ownership.size() );
       threshold = pis_ownership[0];
 
       this->foreach_pi( [&]( auto const& pi, auto index ) {
         if ( index == threshold )
         {
-          if ( party_ind < num_parties - 1 )
+          if ( party_ind < _num_parties - 1 )
           {
             ++party_ind;
             threshold += pis_ownership[party_ind];
@@ -491,11 +507,44 @@ public:
   }
 
 private:
+  uint32_t _num_parties;
   node_map<uint32_t, Ntk> _ownerships;
   std::shared_ptr<typename network_events<Ntk>::add_event_type> add_event;
 }; 
 
 // template<class Ntk>
 // owner_view( Ntk const& ) -> owner_view<Ntk>;
+
+// template<typename Ntk>
+// class enhanced_owner_view : public Ntk
+// {
+// public:
+//   static constexpr size_t MAX_PARTIES = 32;
+//   using ownership_count_t = std::array<uint32_t, MAX_PARTIES>;
+//   using ownership_t = std::unordered_map<uint8_t, std::unordered_set<uint32_t>>;
+//   using storage = typename Ntk::storage;
+//   using node = typename Ntk::node;
+//   using signal = typename Ntk::signal;
+
+//   explicit enhanced_owner_view()
+//     : Ntk(),
+//       _ownerships( *this ),
+//       _ownerships_count( *this )
+//   {
+//     static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
+//     static_assert( has_size_v<Ntk>, "Ntk does not implement the size method" );
+//     static_assert( has_num_pos_v<Ntk>, "Ntk does not implement the num_pos method" );
+//     static_assert( has_foreach_pi_v<Ntk>, "Ntk does not implement the foreach_pi method" );
+//     static_assert( has_foreach_node_v<Ntk>, "Ntk does not implement the foreach_node method" );
+//     static_assert( has_foreach_fanin_v<Ntk>, "Ntk does not implement the foreach_fanin method" );
+
+//     add_event = Ntk::events().register_add_event( [this]( auto const& n ) { on_add( n ); } );
+//   }
+
+// private:
+//   node_map<ownership_t, Ntk> _ownerships;
+//   node_map<ownership_count_t, Ntk> _ownerships_count;
+//   std::shared_ptr<typename network_events<Ntk>::add_event_type> add_event;
+// };
 
 } /* namespace mockturtle */

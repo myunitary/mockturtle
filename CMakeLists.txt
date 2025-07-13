@@ -65,3 +65,8 @@ endif()
 if(MOCKTURTLE_EXPERIMENTS)
   add_subdirectory(experiments)
 endif()
+
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+  add_compile_options(-fsanitize=address -g)
+  add_link_options(-fsanitize=address)
+endif()

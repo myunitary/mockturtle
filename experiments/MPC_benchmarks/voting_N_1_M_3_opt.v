@@ -1,3 +1,4 @@
+// eight voters and two candidate
 module voting_N_1_M_3_opt( x0 , x1 , x2 , x3 , x4 , x5 , x6 , x7 , y0 );
   input x0 , x1 , x2 , x3 , x4 , x5 , x6 , x7 ;
   output y0 ;

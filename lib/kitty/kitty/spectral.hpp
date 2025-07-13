@@ -292,6 +292,69 @@ private:
   std::vector<int32_t> _s;
 };
 
+class fourier_spectrum
+{
+public:
+  fourier_spectrum() = delete;
+  ~fourier_spectrum() = default;
+
+  fourier_spectrum( fourier_spectrum const& other ) : _coefs( std::begin( other._coefs ), std::end( other._coefs ) ) {}
+  fourier_spectrum( fourier_spectrum&& other ) noexcept : _coefs( std::move( other._coefs ) ) {}
+
+  fourier_spectrum& operator=( const fourier_spectrum& other )
+  {
+    if ( this != &other )
+    {
+      _coefs = other._coefs;
+    }
+    return *this;
+  }
+
+  fourier_spectrum& operator=( fourier_spectrum&& other ) noexcept
+  {
+    _coefs = std::move( other._coefs );
+    return *this;
+  }
+
+private:
+  explicit fourier_spectrum( std::vector<float> coefs ) : _coefs( std::move( coefs ) ) {}
+
+public:
+  template<typename TT>
+  static fourier_spectrum from_truth_table( TT const& tt )
+  {
+    std::vector<int32_t> coefs( tt.num_bits(), -1 );
+    for_each_one_bit( tt, [&coefs]( auto b ) {
+      coefs[b] = 1; } );
+    fast_hadamard_transform( coefs );
+
+    std::vector<float> coefs_norm( coefs.size() );
+    float divisor = static_cast<float>( tt.num_bits() );
+    std::transform( coefs.begin(), coefs.end(), coefs_norm.begin(), [divisor]( int32_t ele ) {
+      return static_cast<float>( ele ) / divisor;
+    } );
+
+    return fourier_spectrum( coefs_norm );
+  }
+
+  void print( std::ostream& os, std::vector<uint32_t> const& order ) const
+  {
+    os << std::fixed << std::setprecision(4);
+    for ( auto ele : order )
+    {
+      os << " " << std::setw(7) << _coefs[ele];
+    }
+  }
+
+  inline const auto& get_coefficients() const
+  {
+    return _coefs;
+  }
+
+private:
+  std::vector<float> _coefs;
+};
+
 inline std::vector<uint32_t> get_rw_coeffecient_order( uint32_t num_vars )
 {
   auto size = uint32_t( 1 ) << num_vars;

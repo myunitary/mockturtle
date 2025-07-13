@@ -4,14 +4,14 @@
 #include <mockturtle/views/ownership_view.hpp>
 
 static const std::string mpc_two_party_benchmark[] = {
-  "voting_N_1_M_3", "voting_N_1_M_4"
-  // "voting_N_1_M_3_opt", "voting_N_1_M_4_opt"
+  // "voting_N_1_M_3", "voting_N_1_M_4"
+  "voting_N_1_M_3_opt", "voting_N_1_M_4_opt", "comparetor_32bit_signed_opt"
 };
 
 std::vector<std::string> mpc_two_party_benchmarks()
 {
   std::vector<std::string> benchmarks{};
-  for ( auto i{ 0u }; i < 2u; ++i )
+  for ( auto i{ 0u }; i < 3u; ++i )
   {
     benchmarks.push_back( mpc_two_party_benchmark[i] );
   }

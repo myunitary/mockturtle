@@ -1,0 +1,21 @@
+module and_ary_8( a0, a1, a2, a3, a4, a5, a6, a7, b0, b1, b2, b3, b4, b5, b6, b7, d0 );
+  input a0, a1, a2, a3, a4, a5, a6, a7;
+  input b0, b1, b2, b3, b4, b5, b6, b7;
+  output d0;
+  wire c0, c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13;
+  assign c0 = a0 & b0 ;
+  assign c1 = a1 & b1 ;
+  assign c2 = a2 & b2 ;
+  assign c3 = a3 & b3 ;
+  assign c4 = a4 & b4 ;
+  assign c5 = a5 & b5 ;
+  assign c6 = a6 & b6 ;
+  assign c7 = a7 & b7 ;
+  assign c8 = c0 & c1 ;
+  assign c9 = c2 & c3 ;
+  assign c10 = c4 & c5 ;
+  assign c11 = c6 & c7 ;
+  assign c12 = c8 & c9 ;
+  assign c13 = c10 & c11 ;
+  assign d0 = c12 & c13 ;
+endmodule

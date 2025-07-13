@@ -9,9 +9,11 @@ int main()
   using namespace mockturtle;
 
   // kitty::dynamic_truth_table tt( 3u );
-  kitty::dynamic_truth_table tt( 4u );
+  // kitty::dynamic_truth_table tt( 4u );
+  kitty::dynamic_truth_table tt( 5u );
   // kitty::create_from_hex_string( tt, "d8" ); // PI 1 ? PI 2 : PI 3
-  kitty::create_from_hex_string( tt, "2080" ); // example on slides page 19: ( a0 & b0 ) & ( a1 ^ b1 )
+  // kitty::create_from_hex_string( tt, "2080" ); // example on slides page 19: ( a0 & b0 ) & ( a1 ^ b1 )
+  kitty::create_from_hex_string( tt, "f0f0ccaa" ); // PI 5 ? PI3 : ( PI4 ? PI2 : PI1 )
 
   xag_network ntk = exact_mc_synthesis<xag_network, bill::solvers::bsat2>( tt );
   ntk = exact_linear_resynthesis_optimization( ntk, 500000u );
