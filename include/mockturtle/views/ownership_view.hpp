@@ -390,6 +390,10 @@ public:
   void assign_ownership_per_pi( std::vector<uint32_t> pis_ownership )
   {
     this->incr_trav_id();
+    if ( pis_ownership.size() != this->num_pis() )
+    {
+      fmt::print( "[e] During per-PI ownership assignment, given {} os, while there are {} pis...\n", pis_ownership.size(), this->num_pis() );
+    }
     assert( pis_ownership.size() == this->num_pis() );
     this->foreach_pi( [&]( auto const& pi, auto index ) {
       assign_ownership_local( pi, pis_ownership[index] );
@@ -495,8 +499,8 @@ public:
       fmt::print( "PI{}({}) ", ( i + 1 ), _ownerships[pi] );
     } );
     fmt::print( "\n" );
-    this->foreach_gate( [this]( auto const& n, auto i ) {
-      fmt::print( "Node{}({}) ", ( i + 1 ), _ownerships[n] );
+    this->foreach_gate( [this]( auto const& n ) {
+      fmt::print( "n{}({}) ", this->node_to_index( n ), _ownerships[n] );
     } );
     fmt::print( "\n" );
   }

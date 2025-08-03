@@ -220,6 +220,7 @@ public:
     std::vector<decomp_result> best_decomp_fs{};
     std::vector<masked_encoding> best_encodings{};
     uint8_t best_sel_polar{};
+    bool best_min_mc_mux{};
     bool is_first_solution{ true };
     uint32_t best_cost{ 0u }; 
 
@@ -228,8 +229,32 @@ public:
       _ps.max_free_set_size = _num_vars - _ps.lut_size;
     }
 
+    /* reorder `ownerships` into `pi_ownerships` */
+    std::vector<uint32_t> pis_ownership_per_pi( _num_vars );
+    for ( auto i{ 1u }; i < ownerships.size(); ++i )
+    {
+      for ( auto element : ownerships[i] )
+      {
+        pis_ownership_per_pi[element] = ( 1 << ( i - 1 ) );
+      }
+    }
+    for ( auto element : ownerships[0] )
+    {
+      /* TODO : any better solution? */
+      pis_ownership_per_pi[element] = 3u;
+    }
+
+    /* for debugging */
+    // fmt::print( "[m] Derived per-pi ownership: [ " );
+    // for ( auto const& element : pis_ownership_per_pi )
+    // {
+    //   fmt::print( "{}, ", element );
+    // }
+    // fmt::print( "]\n" );
+
     for ( uint32_t i = 1u; i < ownerships.size(); ++i )
     {
+      // fmt::print ( "[m] Working on the {}/{} partition...\n", i, ( ownerships.size() - 1 ) );
       const uint32_t ownerships_i_size = ownerships[i].size();
       if ( ownerships_i_size > _ps.max_free_set_size || ownerships_i_size == 1u )
 			{
@@ -239,13 +264,16 @@ public:
       std::copy( _tt_orig.begin(), _tt_orig.end(), _tt_res.begin() );
       std::iota( _perm.begin(), _perm.end(), 0u );
 			push_into_free_set( ownerships[i] );
+      // fmt::print( "[m] Finished partitioning... " );
 
       if ( check_multiplicity( ownerships[i] ) )
       {
+        // fmt::print( "Finished computing mu... " );
         std::vector<TT> isets = compute_isets();
         compute_encodings();
 
         bool success_decomp = ( _multiplicity <= 4u ) ? solve_encoding_exact( isets ) : solve_encoding_heuristic( isets );
+        // fmt::print( "Finished deriving encoding!\n" );
         /* TODO : Conservative solution for now */
         // bool success_decomp = ( _multiplicity <= 4u ) && solve_encoding_exact( isets );
         if ( !success_decomp )
@@ -257,11 +285,11 @@ public:
         if ( is_first_solution )
         {
           assert( _decomp_fs.size() == _multiplicity );
-          int32_t current_cost = mc_engine.estimate_decomp_res_cost( _decomp_bs, _num_vars, _decomp_fs.size(), ownerships, i, _multiplicity );
-
+          // int32_t current_cost = mc_engine.estimate_decomp_res_cost( _decomp_bs, _num_vars, _decomp_fs.size(), pis_ownership_per_pi, i, _multiplicity, _min_mc_mux );
+          int32_t current_cost = mc_engine.estimate_decomp_res_cost( _decomp_bs, _num_vars, _decomp_fs.size(), ownerships, i, _multiplicity, _min_mc_mux );
           /* for debugging */
           // if ( current_cost >= 0u )
-          // if ( current_cost > 0u )
+          // // if ( current_cost > 0u )
           // {
           //   fmt::print( "[m] The {}-th decomposition solution: cost is {}\n", i, current_cost );
           //   for ( auto const& res_each : _decomp_bs )
@@ -286,16 +314,22 @@ public:
             best_decomp_fs = _decomp_fs;
             best_encodings = _encodings;
             best_sel_polar = _sel_polar;
+            best_min_mc_mux = _min_mc_mux;
           }
+          // else
+          // {
+          //   fmt::print( "[e] Warning! Generated a negative cost solution!\n" );
+          // }
         }
         else
         {
           assert( _decomp_fs.size() == _multiplicity );
-          int32_t current_cost = mc_engine.estimate_decomp_res_cost( _decomp_bs, _num_vars, _decomp_fs.size(), ownerships, i, _multiplicity );
+          // int32_t current_cost = mc_engine.estimate_decomp_res_cost( _decomp_bs, _num_vars, _decomp_fs.size(), pis_ownership_per_pi, i, _multiplicity, _min_mc_mux );
+          int32_t current_cost = mc_engine.estimate_decomp_res_cost( _decomp_bs, _num_vars, _decomp_fs.size(), ownerships, i, _multiplicity, _min_mc_mux );
 
           /* for debugging */
           // if ( current_cost >= 0u )
-          // if ( current_cost > 0u )
+          // // if ( current_cost > 0u )
           // {
           //   fmt::print( "[m] The {}-th decomposition solution: cost is {}\n", i, current_cost );
           //   for ( auto const& res_each : _decomp_bs )
@@ -319,15 +353,35 @@ public:
             best_decomp_fs = _decomp_fs;
             best_encodings = _encodings;
             best_sel_polar = _sel_polar;
+            best_min_mc_mux = _min_mc_mux;
           }
         }
       }
+
+      // if ( i != ( ownerships.size() - 1 ) )
+      // {
+      //   fmt::print( "[m] Next partition...\n" );
+      // }
+      // else
+      // {
+      //   fmt::print( "[m] Explored all partitions...\n" );
+      // }
     }
 
     _decomp_bs = best_decomp_bs;
     _decomp_fs = best_decomp_fs;
     _encodings = best_encodings;
     _sel_polar = best_sel_polar;
+    _min_mc_mux = best_min_mc_mux;
+
+    // if ( is_first_solution )
+    // {
+    //   fmt::print( "[m] Failed decomposition...\n" );
+    // }
+    // else
+    // {
+    //   fmt::print( "[m] Returning {}...\n", best_cost );
+    // }
 
     return is_first_solution ? -1 : static_cast<int32_t>( best_cost );
   }
@@ -1700,7 +1754,9 @@ private:
   void compute_top_mux()
 	{
     const uint32_t num_top_vars = _decomp_bs.size() + _free_set.size();
-    const bool comput_mux = ( num_top_vars <= _ps.lut_size );
+    // const bool comput_mux = ( num_top_vars <= _ps.lut_size );
+    /* always consider heuristic top MUX construction */
+    const bool comput_mux = false;
     decomp_result decomp_res;
     std::vector<kitty::dynamic_truth_table> fs_vars{};
     _decomp_fs.clear();
@@ -1859,6 +1915,7 @@ public:
   std::vector<decomp_result> _decomp_fs;
   std::vector<masked_encoding> _encodings;
   uint8_t _sel_polar;
+  bool _min_mc_mux{};
 };
 
 } /* namespace mockturtle */
