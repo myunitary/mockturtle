@@ -6,9 +6,9 @@
 #include <bill/sat/interface/glucose.hpp>
 #include <mockturtle/algorithms/balancing.hpp>
 #include <mockturtle/algorithms/balancing/esop_balancing.hpp>
-#include <mockturtle/algorithms/fhe_optimization.hpp>
-#include <mockturtle/algorithms/node_resynthesis/fhe_optimization_exact_synthesis.hpp>
-#include <mockturtle/algorithms/node_resynthesis/fhe_optimization_database.hpp>
+#include <mockturtle/algorithms/lvl_fhe_optimization.hpp>
+#include <mockturtle/algorithms/node_resynthesis/lvl_fhe_optimization_exact_synthesis.hpp>
+#include <mockturtle/algorithms/node_resynthesis/lvl_fhe_optimization_database.hpp>
 #include <mockturtle/io/aiger_reader.hpp>
 #include <mockturtle/io/verilog_reader.hpp>
 #include <mockturtle/io/write_aiger.hpp>
@@ -116,15 +116,15 @@ std::vector<std::string> pldi_benchmarks()
 
 std::string benchmark_path( std::string const& benchmark_name )
 {
-	// return fmt::format( "../experiments/epfl_tcad22/{}.v", benchmark_name );
 	return fmt::format( "../experiments/pldi_benchmarks/{}.v", benchmark_name );
 }
+
+const std::string abc_path = "/Users/myu/Documents/GitHub/abc/";
 
 template<class Ntk>
 bool abc_cec( Ntk const& ntk, std::string const& benchmark )
 {
 	mockturtle::write_bench( ntk, "/tmp/test.bench" );
-	std::string abc_path = "/Users/myu/Documents/GitHub/abc/";
 	std::string command = fmt::format( "{}abc -q \"cec -n {} /tmp/test.bench\"", abc_path, benchmark_path( benchmark ) );
 
 	std::array<char, 128> buffer;
@@ -148,7 +148,6 @@ template<class Ntk>
 void abc_write_verilog( Ntk const& ntk, std::string const& dir )
 {
 	mockturtle::write_bench( ntk, "/tmp/tmp.bench" );
-	std::string abc_path = "/Users/myu/Documents/GitHub/abc/";
 	std::string command = fmt::format( "{}abc -q \"read /tmp/tmp.bench; write_verilog {}\"", abc_path, dir );
 	std::unique_ptr<FILE, decltype( &pclose )> pipe( popen( command.c_str(), "r" ), pclose );
 
@@ -162,7 +161,6 @@ template<class Ntk>
 void abc_write_aiger( Ntk const& ntk, std::string const& dir )
 {
 	mockturtle::write_bench( ntk, "/tmp/tmp.bench" );
-	std::string abc_path = "/Users/myu/Documents/GitHub/abc/";
 	std::string command = fmt::format( "{}abc -q \"read /tmp/tmp.bench; strash; write {}\"", abc_path, dir );
 	std::unique_ptr<FILE, decltype( &pclose )> pipe( popen( command.c_str(), "r" ), pclose );
 
@@ -172,51 +170,40 @@ void abc_write_aiger( Ntk const& ntk, std::string const& dir )
 	}
 }
 
-uint32_t fhe_cost( uint32_t mc, uint32_t md )
+uint32_t lvl_fhe_cost( uint32_t mc, uint32_t md )
 {
 	return mc * md * md;
 }
 
 int main()
 {
-	// std::string json_name = "fhe_optimization_pldi_exact";
-	// std::string json_name = "fhe_optimization_pldi_esop_test";
-	// std::string json_name = "fhe_optimization_pldi_hybrid_5_restart_md_target";
-	std::string json_name = "fhe_optimization";
+	std::string json_name = "lvl_fhe_optimization";
 	experiments::experiment<std::string, uint32_t, uint32_t, uint32_t, uint32_t, float, uint32_t, float, bool> exp_res( json_name, "benchmark", "MD best", "MC best", "MD after", "MC after", "improvement %", "#ite_ctr", "runtime [s]", "equivalent" );
-	// experiments::experiment<std::string, uint32_t, uint32_t, uint32_t, uint32_t, float, uint32_t, uint32_t, std::vector<uint8_t>, float, bool> exp_res( json_name, "benchmark", "MD best", "MC best", "MD after", "MC after", "improvement %", "#ite_ctr_rewrite", "#ite_ctr_esop", "script", "runtime [s]", "equivalent" );
-	// auto const benchmarks = epfl_benchmarks();
-	// std::vector<uint32_t> const best_md = md_sota_epfl();
-	// std::vector<uint32_t> const best_mc = mc_sota_epfl();
 	auto const benchmarks = pldi_benchmarks();
 	std::vector<uint32_t> const best_md = md_sota_pldi();
 	std::vector<uint32_t> const best_mc = mc_sota_pldi();
 	float time_opt{ 0.0f };
 
-	mockturtle::fhe_optimization_database_params g_local_opt_fn_ps;
+	mockturtle::lvl_fhe_optimization_database_params g_local_opt_fn_ps;
 	g_local_opt_fn_ps.verbose = false;
-	mockturtle::fhe_optimization_database_stats g_local_opt_fn_st;
-	mockturtle::fhe_optimization_database g_local_opt_fn{ "db_fhe_5", g_local_opt_fn_ps, &g_local_opt_fn_st };
+	mockturtle::lvl_fhe_optimization_database_stats g_local_opt_fn_st;
+	mockturtle::lvl_fhe_optimization_database g_local_opt_fn{ "../experiments/databases/db_lvl_fhe_5.db", g_local_opt_fn_ps, &g_local_opt_fn_st };
 
-	mockturtle::fhe_optimization_exact_syn_params cm_local_opt_fn_ps;
+	mockturtle::lvl_fhe_optimization_exact_syn_params cm_local_opt_fn_ps;
 	cm_local_opt_fn_ps.verbose = false;
 	cm_local_opt_fn_ps.verify_solution = false;
 	cm_local_opt_fn_ps.use_advanced_constraints = false;
 	cm_local_opt_fn_ps.use_exisiting_cache = false;
-	mockturtle::fhe_optimization_exact_syn_stats cm_local_opt_fn_st;
-	// mockturtle::fhe_optimization_exact_syn<bill::solvers::glucose_41> cm_local_opt_fn{ cm_local_opt_fn_ps, &cm_local_opt_fn_st };
-	mockturtle::fhe_optimization_exact_syn<bill::solvers::bsat2> cm_local_opt_fn{ cm_local_opt_fn_ps, &cm_local_opt_fn_st };
+	mockturtle::lvl_fhe_optimization_exact_syn_stats cm_local_opt_fn_st;
+	mockturtle::lvl_fhe_optimization_exact_syn<bill::solvers::bsat2> cm_local_opt_fn{ cm_local_opt_fn_ps, &cm_local_opt_fn_st };
 
 	for ( auto i{ 0u }; i < benchmarks.size(); ++i )
-	// uint8_t target = 2u;
-	// for ( auto i{ target }; i <= target; ++i )
 	{
 		auto const benchmark = benchmarks[i];
 		fmt::print( "[i] processing {}\n", benchmark );
 
 		mockturtle::xag_network xag;
 		auto read_stats = lorina::read_verilog( benchmark_path( benchmark ), mockturtle::verilog_reader( xag ) );
-		// auto read_stats = lorina::read_aiger( benchmark_path( benchmark ), mockturtle::aiger_reader( xag ) );
 
 		if ( read_stats != lorina::return_code::success )
 		{
@@ -238,7 +225,7 @@ int main()
 		uint32_t mc_after{ 0u };
 		time_opt = 0.;
 
-		mockturtle::fhe_optimization_params ps;
+		mockturtle::lvl_fhe_optimization_params ps;
 		ps.only_on_critical_path = true;
 		ps.always_accept_exact_impl = false;
 		ps.randomly_take_equal_impl = false;
@@ -247,7 +234,7 @@ int main()
 		ps.cut_enum_ps.very_verbose = false;
 		ps.progress = true;
 		ps.verbose = false;
-		mockturtle::fhe_optimization_stats st;
+		mockturtle::lvl_fhe_optimization_stats st;
 
 		// first round : logic rewriting until saturation
 		while ( true )
@@ -260,15 +247,13 @@ int main()
 			++ite_ctr;
 
 			clock_t opt_time_begin = clock();
-			// mockturtle::xag_network xag_new = mockturtle::fhe_optimization( xag, g_local_opt_fn, ps, &st );
-			mockturtle::xag_network xag_new = mockturtle::fhe_optimization( xag, g_local_opt_fn, cm_local_opt_fn, ps, &st );
+			mockturtle::xag_network xag_new = mockturtle::lvl_fhe_optimization( xag, g_local_opt_fn, cm_local_opt_fn, ps, &st );
 			time_opt += float( clock() - opt_time_begin ) / CLOCKS_PER_SEC;
 			mockturtle::depth_view<mockturtle::xag_network, mockturtle::detail::num_and, false> xag_new_md{ xag_new };
 			mc_after = mockturtle::costs<mockturtle::xag_network, mockturtle::detail::num_and>( xag_new );
 			md_after = xag_new_md.depth();
 			fmt::print( "[i] after {}th run, the md becomes {}\n", ite_ctr, md_after );
-			if ( fhe_cost( mc_before, md_before ) <= fhe_cost( mc_after, md_after ) )
-			// if ( md_before < md_after || ( ( md_before == md_after ) && ( mc_before <= mc_after ) ) )
+			if ( lvl_fhe_cost( mc_before, md_before ) <= lvl_fhe_cost( mc_after, md_after ) )
 			{
 				mc_after = mc_before;
 				md_after = md_before;
@@ -571,7 +556,6 @@ int main()
 		// 	next_algorithm = random( gen );
 		// }
 
-		// const bool is_eq = true;
 		const bool is_eq = abc_cec( xag, benchmark );
 		if ( !is_eq )
 		{
@@ -579,10 +563,8 @@ int main()
 			abort();
 		}
 
-		// float improve_local = ( ( static_cast<float>( fhe_cost( mc_init, md_init ) ) - static_cast<float>( fhe_cost( mc_after, md_after ) ) ) ) / static_cast<float>( fhe_cost( mc_init, md_init ) ) * 100;
-		float improve_global = ( ( static_cast<float>( fhe_cost( mc_best, md_best ) ) - static_cast<float>( fhe_cost( mc_after, md_after ) ) ) ) / static_cast<float>( fhe_cost( mc_best, md_best ) ) * 100;
+		float improve_global = ( ( static_cast<float>( lvl_fhe_cost( mc_best, md_best ) ) - static_cast<float>( lvl_fhe_cost( mc_after, md_after ) ) ) ) / static_cast<float>( lvl_fhe_cost( mc_best, md_best ) ) * 100;
 		exp_res( benchmark, md_best, mc_best, md_after, mc_after, improve_global, ite_ctr, time_opt, is_eq );
-		// exp_res( benchmark, md_best, mc_best, md_after, mc_after, improve_global, ite_ctr_rewrite, ite_ctr_esop, script_tmp, time_opt, is_eq );
 		// mockturtle::write_verilog( xag, ( "../experiments/benchmarks/fhe_opt_pldi_exact/" + benchmark + ".v" ) );
 		// mockturtle::write_verilog( xag, ( "../experiments/benchmarks/fhe_opt_pldi_esop/" + benchmark + ".v" ) );
 		// mockturtle::write_verilog( xag, ( "../experiments/benchmarks/fhe_opt_pldi_hybrid/restart_md/" + benchmark + ".v" ) );

@@ -20,7 +20,7 @@
 namespace mockturtle
 {
 
-struct fhe_optimization_params
+struct lvl_fhe_optimization_params
 {
 	bool only_on_critical_path{ true };
 	bool always_accept_exact_impl{ false };
@@ -30,7 +30,7 @@ struct fhe_optimization_params
 	bool verbose{ false };
 };
 
-struct fhe_optimization_stats
+struct lvl_fhe_optimization_stats
 {
 	cut_enumeration_stats cut_enum_st;
 	void report() const
@@ -48,45 +48,6 @@ struct signal_level_pair
 namespace detail
 {
 
-
-/* for generating example */
-void profile_partial_XAG( cut_view<xag_network> const& xag )
-{
-	xag.foreach_gate( [&]( auto const& n ) {
-		fmt::print( "Node {} : ", n );
-		uint32_t ni1, ni2;
-		bool neg1{ false }, neg2{ false }, ind{ false };
-		xag.foreach_fanin( n, [&]( auto const& f ) {
-			if ( ind )
-			{
-				ni2 = f.index;
-				if ( xag.is_complemented( f ) )
-				{
-					neg2 = true;
-				}
-			}
-			else
-			{
-				ni1 = f.index;
-				if ( xag.is_complemented( f ) )
-				{
-					neg1 = true;
-				}
-			}
-			ind = true;
-		} );
-		if ( ni1 > ni2 )
-		{
-			fmt::print( "XOR( {}Node {}, {}Node {} )\n", ( neg1 ? "~" : "" ), ni1, ( neg2 ? "~" : "" ), ni2 );
-		}
-		else
-		{
-			fmt::print( "AND( {}Node {}, {}Node {} )\n", ( neg1 ? "~" : "" ), ni1, ( neg2 ? "~" : "" ), ni2 );
-		}
-	} );
-}
-
-
 struct num_and
 {
 	uint32_t operator()( xag_network const& ntk, xag_network::node const& n ) const
@@ -100,13 +61,9 @@ struct num_and
 };
 
 template<class GLocalOptFn, class CMLocalOptFn>
-struct fhe_optimization_impl
+struct lvl_fhe_optimization_impl
 {
-	// fhe_optimization_impl( xag_network const& ntk, GLocalOptFn const& g_local_opt_fn, fhe_optimization_params const& ps, fhe_optimization_stats& st )
-	// 		: ntk_( ntk ), g_local_opt_fn_( g_local_opt_fn ), ps_( ps ), st_( st )
-	// {
-	// }
-	fhe_optimization_impl( xag_network const& ntk, GLocalOptFn const& g_local_opt_fn, CMLocalOptFn const& cm_local_opt_fn, fhe_optimization_params const& ps, fhe_optimization_stats& st )
+	lvl_fhe_optimization_impl( xag_network const& ntk, GLocalOptFn const& g_local_opt_fn, CMLocalOptFn const& cm_local_opt_fn, lvl_fhe_optimization_params const& ps, lvl_fhe_optimization_stats& st )
 			: ntk_( ntk ), g_local_opt_fn_( g_local_opt_fn ), cm_local_opt_fn_( cm_local_opt_fn ), ps_( ps ), st_( st )
 	{}
 
@@ -114,8 +71,6 @@ struct fhe_optimization_impl
 	{
 		xag_network res;
 		depth_view<xag_network, num_and, false> ntk_md_{ ntk_ };
-		//uint32_t circuit_m_depth{ ntk_md_.depth() };
-		//uint32_t circuit_m_compl{ costs<xag_network, num_and>( ntk_ ) };
 		uint32_t current_m_depth{ 0u };
 
 		/* cut enumeration */
@@ -132,7 +87,7 @@ struct fhe_optimization_impl
 		} );
 
 		/* gates */
-		progress_bar pbar{ ntk_.size(), "FHE optimization |{0}| node = {1:>4} / " + std::to_string( ntk_.size() ) + "   current mult. depth = {2}", ps_.progress };
+		progress_bar pbar{ ntk_.size(), "Leveled FHE optimization |{0}| node = {1:>4} / " + std::to_string( ntk_.size() ) + "   current mult. depth = {2}", ps_.progress };
 		topo_view<xag_network>{ ntk_ }.foreach_node( [&]( auto const& n, auto index ) {
 			pbar( index, index, current_m_depth );
 
@@ -171,8 +126,8 @@ struct fhe_optimization_impl
 					return arrival_time_p;
 				} );
 
-				/* there is room exploring the metric evaluating the quality of a local implementation */
-				/* currently, we simply adopt the mult. depth as the only criteria                     */
+				// there is room exploring the metric evaluating the quality of a local implementation
+				// currently, we simply adopt the mult. depth as the only criteria
 				const auto on_signal = [&]( signal_level_pair const& cand ) {
 					if ( cand.m_depth < best_impl.m_depth )
 					{
@@ -190,27 +145,17 @@ struct fhe_optimization_impl
 					}
 				};
 
-				/* run the generalized local optimization function anyway, since there is no guarantee */
-				/* that the customized local optimization function can find a solution                 */
-				/* TODO: how to skip cuts whose local function's functional MC is 0?                   */
 				const uint32_t g_m_depth = g_local_opt_fn_.run( res, cuts.truth_table( *pcut ), arrival_times, on_signal );
 				if ( ps_.verbose )
 				{
 					fmt::print( "[m] managed to construct a partial network based on DB ({})\n", g_m_depth );
 				}
 
-				/* run the customized local optimization function only if the arrival times of leaves  */
-				/* are not equal                                                                       */
 				uint32_t c_m_depth{ g_m_depth };
 				xag_network::signal c_impl;
 
 
-				/* for generating example */
 				const xag_network::signal g_impl_f{ best_impl.f };
-
-
-				/* for debugging */
-				// equal_arrival_times = true;
 				if ( !equal_arrival_times )
 				{
 					std::tie( c_m_depth, c_impl ) = cm_local_opt_fn_.run( res, cuts.truth_table( *pcut ), arrival_times, g_m_depth, on_signal );
@@ -226,60 +171,17 @@ struct fhe_optimization_impl
 							fmt::print( "[m] failed to exactly synthesize a better partial network\n" );
 						}
 					}
-
-
-					/* for generating example */
-					// if ( c_m_depth != g_m_depth && ( pcut->size() == 4u ) )
-					// {
-					// 	fmt::print( "Boolean function : {}\n", kitty::to_binary( cuts.truth_table( *pcut ) ) );
-					// 	std::cout << "Input mult. level : ";
-					// 	std::vector<xag_network::signal> leaves;
-					// 	for ( auto const& arrival_time_p : arrival_times )
-					// 	{
-					// 		leaves.emplace_back( arrival_time_p.f );
-					// 		std::cout << arrival_time_p.m_depth << " ";
-					// 	}
-					// 	std::cout << std::endl;
-					// 	std::cout << "Leaves : ";
-					// 	for ( auto const& leaf : leaves )
-					// 	{
-					// 		std::cout << "Node " << leaf.index << " ";
-					// 	}
-					// 	std::cout << std::endl;
-					// 	fmt::print( "G_MD : {}; C_MD : {}\n", g_m_depth, c_m_depth );
-					// 	std::cout << "Without input mult. level considered : \n";
-					// 	cut_view<xag_network> partial{ res, leaves, g_impl_f };
-					// 	profile_partial_XAG( partial );
-
-					// 	fmt::print( "With input mult. level considered: \n" );
-					// 	cut_view<xag_network> partial_c{ res, leaves, c_impl };
-					// 	profile_partial_XAG( partial_c );
-					// 	std::cout << std::endl;
-					// 	std::cout << std::endl;
-					// 	// abort();
-					// }
-
-
-					if ( ps_.always_accept_exact_impl && c_m_depth != g_m_depth )
+          
+          if ( ps_.always_accept_exact_impl && c_m_depth != g_m_depth )
 					{
 						old2new[n] = { c_impl, c_m_depth };
 						current_m_depth = std::max( current_m_depth, c_m_depth );
-
-
-						/* for debugging */
-						// fmt::print( "[m] Node {}{} is forced to be the new implementation of Node {}\n", ( res.is_complemented( c_impl ) ? "!" : "" ), res.get_node( c_impl ), n );
-
-
-						return;
+            return;
 					}
 				}
 			}
 			old2new[n] = best_impl;
 			current_m_depth = std::max( current_m_depth, best_impl.m_depth );
-
-
-			/* for debugging */
-			// fmt::print( "[m] Node {}{} is selected as the new implementation of Node {}\n", ( res.is_complemented( best_impl.f ) ? "!" : "" ), res.get_node( best_impl.f ), n );
 		} );
 
 		/* pos */
@@ -295,21 +197,17 @@ private:
 	xag_network const& ntk_;
 	GLocalOptFn const& g_local_opt_fn_;
 	CMLocalOptFn const& cm_local_opt_fn_;
-	fhe_optimization_params const& ps_;
-	fhe_optimization_stats& st_;
+	lvl_fhe_optimization_params const& ps_;
+	lvl_fhe_optimization_stats& st_;
 };
 
 } /* detail */
 
-/* TODO: debug the generic local optimization function */
 template<class GLocalOptFn, class CMLocalOptFn>
-xag_network fhe_optimization( xag_network const& ntk, GLocalOptFn const& g_local_opt_fn, CMLocalOptFn const& cm_local_opt_fn, fhe_optimization_params const& ps = {}, fhe_optimization_stats* pst = nullptr )
-// template<class GLocalOptFn>
-// xag_network fhe_optimization( xag_network const& ntk, GLocalOptFn const& g_local_opt_fn, fhe_optimization_params const& ps = {}, fhe_optimization_stats* pst = nullptr )
+xag_network lvl_fhe_optimization( xag_network const& ntk, GLocalOptFn const& g_local_opt_fn, CMLocalOptFn const& cm_local_opt_fn, lvl_fhe_optimization_params const& ps = {}, lvl_fhe_optimization_stats* pst = nullptr )
 {
-	fhe_optimization_stats st;
-	// const auto res = detail::fhe_optimization_impl( ntk, g_local_opt_fn, ps, st ).run();
-	const auto res = detail::fhe_optimization_impl( ntk, g_local_opt_fn, cm_local_opt_fn, ps, *pst ).run();
+	lvl_fhe_optimization_stats st;
+	const auto res = detail::lvl_fhe_optimization_impl( ntk, g_local_opt_fn, cm_local_opt_fn, ps, *pst ).run();
 
 	if ( pst )
 	{

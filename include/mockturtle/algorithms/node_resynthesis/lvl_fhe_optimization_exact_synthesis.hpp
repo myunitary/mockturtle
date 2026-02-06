@@ -13,7 +13,7 @@
 #include <kitty/operations.hpp>
 #include <kitty/print.hpp>
 #include <kitty/spectral.hpp>
-#include <mockturtle/algorithms/fhe_optimization.hpp>
+#include <mockturtle/algorithms/lvl_fhe_optimization.hpp>
 #include <mockturtle/algorithms/simulation.hpp>
 #include <mockturtle/networks/xag.hpp>
 #include <mockturtle/utils/node_map.hpp>
@@ -24,7 +24,7 @@
 namespace mockturtle
 {
 
-struct fhe_optimization_exact_syn_params
+struct lvl_fhe_optimization_exact_syn_params
 {
 	uint32_t conflict_limit{ 0u };
 	bool use_advanced_constraints{ false };
@@ -33,20 +33,14 @@ struct fhe_optimization_exact_syn_params
 	bool verify_solution{ false };
 };
 
-struct fhe_optimization_exact_syn_stats
+struct lvl_fhe_optimization_exact_syn_stats
 {
 	stopwatch<>::duration time_parse_cache{};
 	stopwatch<>::duration time_solving{};
-	// uint32_t num_vars{};
-	// uint32_t num_clauses{};
-	// uint32_t num_instances{};
 
 	void report() const
 	{
 		fmt::print( "[i] solving time  = {:>5.2f} secs\n", to_seconds( time_solving ) );
-		// fmt::print( "[i] total vars    = {}\n", num_vars );
-		// fmt::print( "[i] total clauses = {}\n", num_clauses );
-		// fmt::print( "[i] num instances = {}\n", num_instances );
 	}
 };
 
@@ -172,8 +166,7 @@ bool reschedule( uint32_t depth_target, std::vector<uint32_t>& depth, schedule& 
 		{
 			if ( scheduling[i] == 0u )
 			{
-				// // impossible to achieve the target depth using the current AND fence
-				// return false;
+				// impossible to achieve the target depth using the current AND fence
 				continue;
 			}
 
@@ -214,10 +207,6 @@ bool derive_signature( std::vector<uint32_t> const& input_arrival_time, schedule
 		{
 			if ( input_arrival_time[i] - input_arrival_time[i - 1] >= 3 )
 			{
-				/* for debugging */
-				// fmt::print( "[m] has gap in input arrival time\n" );
-
-
 				for ( uint8_t j{ 0u }; j < i; ++j )
 				{
 					signature[j] = 0;
@@ -231,10 +220,6 @@ bool derive_signature( std::vector<uint32_t> const& input_arrival_time, schedule
 			}
 		}
 
-		/* for debugging */
-		// fmt::print( "[m] doesn't have gap in input arrival time\n" );
-
-
 		for ( uint8_t i{ 0u }; i < first_non_zero; ++i )
 		{
 			signature[i] = 0u;
@@ -247,7 +232,7 @@ bool derive_signature( std::vector<uint32_t> const& input_arrival_time, schedule
 		return true;
 	}
 
-	// if a signature turns out to be all zero, it implies the corresponding fence cannot help
+	// if a signature turns out to be all zero, it implies the corresponding fence is infeasible
 
 	return false;
 }
@@ -287,8 +272,8 @@ struct md_optimization_exact_syn
 public:
 	md_optimization_exact_syn( kitty::dynamic_truth_table const& func, uint32_t const& g_m_depth,
 	                           uint32_t& c_m_depth, std::vector<signal_level_pair> const& inputs, 
-	                           fhe_optimization_exact_syn_params const& ps,
-	                           fhe_optimization_exact_syn_stats* pst,
+	                           lvl_fhe_optimization_exact_syn_params const& ps,
+	                           lvl_fhe_optimization_exact_syn_stats* pst,
 	                           xag_network& xag_res,
 	                           std::shared_ptr<xag_network> p_xag_cache,
 	                           std::vector<xag_network::signal> const& pis_cache,
@@ -315,14 +300,12 @@ public:
 
 	~md_optimization_exact_syn()
 	{
-		/* for debugging */
 		// fmt::print( "[m] {} entries in the blacklist\n", ( *p_blacklist_ )[num_vars_].size() );
 		// fmt::print( "[m] {} entries in the cache\n", ( *p_cache_ )[num_vars_].size() );
 	}
 
 	std::optional<xag_network::signal> exact_syn_flow()
 	{
-		/* TO CONFIRM: is the case of 0-mc functions ruled out already? */
 		if ( mc_ == 0u )
 		{
 			return std::nullopt;
@@ -331,31 +314,7 @@ public:
 		// aligning and ordering input arrival times
 		std::vector<uint8_t> idx( input_arrival_times_.size() );  // the indices of the ordered variables in 'input_arrival_times_'
 		std::iota( idx.begin(), idx.end(), 0u );
-		// std::vector<uint32_t> input_arrival_ordered = process_input_arrival( input_arrival_times_, idx, diff );
 		std::vector<uint32_t> input_arrival_ordered = order_input_arrival( input_arrival_times_, idx );
-
-
-		/* for debugging */
-		// fmt::print( "[m] start exact synthesis\n" );
-		// fmt::print( "[m] input arrival times are : " );
-		// for ( auto pin_delay : input_arrival_times_ )
-		// {
-		// 	fmt::print( "{}, ", pin_delay );
-		// }
-		// fmt::print( "\n" );
-		// fmt::print( "[m] aligned input arrival times are : " );
-		// for ( auto pin_delay : input_arrival_ordered )
-		// {
-		// 	fmt::print( "{}, ", pin_delay );
-		// }
-		// fmt::print( "\n" );
-		// fmt::print( "[m] indices are : " );
-		// for ( auto index : idx )
-		// {
-		// 	fmt::print( "{}, ", index );
-		// }
-		// fmt::print( "\n" );
-
 
 		// initializing 'md_expected', 'schedules' and 'depths'
 		std::array<uint32_t, num_and_fences> md_expected;
@@ -394,20 +353,13 @@ public:
 				md_ = md_expected[i];
 			}
 			bool reschedule_able = reschedule( md_expected[i], depth, s );
-			// assert( reschedule_able );
 			schedules[i] = s;
 			depths[i] = depth;
 		}
 
 		if ( md_ >= g_m_depth_ )
 		{
-
-
-			/* for debugging */
-			// fmt::print( "[m] impossible to realize a smaller depth, skipping...\n" );
-
-
-			return std::nullopt;
+      return std::nullopt;
 		}
 
 		while ( true )
@@ -422,7 +374,6 @@ public:
 					std::vector<uint8_t> signature_ordered( schedules[i].size(), 0u );
 					if ( !derive_signature( input_arrival_ordered, schedules[i], signature_ordered ) )
 					{
-						// known to be non-reschedulable, skipping...
 						md_expected[i] = 0u;
 						depths[i].resize( 0 );
 						schedules[i].resize( 0 );
@@ -443,40 +394,10 @@ public:
 						s[j] = s_tmp[perm_[j]];
 					}
 
-
-					/* for debugging */
-					//fmt::print( "[m] trying to solve such an eaxt synthesis problem : " );
-					// fmt::print( "[m] ordered input arrival time is : " );
-					// for ( auto t : input_arrival_ordered )
-					// {
-					// 	fmt::print( "{}, ", t );
-					// }
-					// fmt::print( "\n" );
-					// fmt::print( "[m] ordered scheduling is : " );
-					// for ( auto schedule : schedules[i] )
-					// {
-					// 	fmt::print( "{}, ", schedule );
-					// }
-					// fmt::print( "\n" );
-					// fmt::print( "[m] ordered depth is : " );
-					// for ( auto depth : depths[i] )
-					// {
-					// 	fmt::print( "{}, ", depth );
-					// }
-					// fmt::print( "\n" );
-					// fmt::print( "[m] ordered signature is : " );
-					// for ( auto sig : signature_ordered )
-					// {
-					// 	fmt::print( "{}, ", sig );
-					// }
-					// fmt::print( "\n" );
-
-
 					// refer to the cache
 					const auto it_cache = ( *p_cache_ )[num_vars_].find( std::make_pair( *( repr_.cbegin() ), signature ) );
 					if ( it_cache != ( *p_cache_ )[num_vars_].end() )
 					{
-						// fmt::print( "[m] exact implementation found in the cache\n" );
 						return construct_repr_based_xag( it_cache->second );
 					}
 
@@ -484,7 +405,6 @@ public:
 					if ( std::find( ( ( *p_blacklist_ )[num_vars_] ).begin(), ( ( *p_blacklist_ )[num_vars_] ).end(), std::make_pair( *( repr_.cbegin() ), signature ) ) == ( ( *p_blacklist_ )[num_vars_] ).end() )
 					{
 						// not blacklisted, resort to exact synthesis
-						// ++pst_->num_instances;
 						auto p_sol = exact_syn_instance( and_fences_lib[i].and_fence, s, signature );
 						if ( p_sol )
 						{
@@ -492,7 +412,6 @@ public:
 						}
 						
 						( ( *p_blacklist_ )[num_vars_] ).emplace_back( std::make_pair( *( repr_.cbegin() ), signature ) );
-						// fmt::print( "[m] blacklist updated\n" );
 					}
 
 					bool reschedule_able = reschedule( ++md_expected[i], depths[i], schedules[i] );
@@ -508,7 +427,6 @@ public:
 
 			if ( !matched )
 			{
-				/* TODO: should not happen, add an assertion */
 				return std::nullopt;
 			}
 
@@ -526,13 +444,11 @@ private:
 	{
 		ltfi_vars_.clear();
 		truth_vars_.clear();
-		// truth_vars_.resize( func_.num_bits() );
 		truth_vars_.resize( repr_normal_.num_bits() );
 
 		for ( auto i{ 0u }; i < num_vars_; ++i )
 		{
 			const auto var_tt = kitty::nth_var<kitty::dynamic_truth_table> ( num_vars_, i );
-			// for ( auto b{ 0u }; b < func_.num_bits(); ++b )
 			for ( auto b{ 0u }; b < repr_normal_.num_bits(); ++b )
 			{
 				truth_vars_[b].emplace_back( pntk.get_constant( kitty::get_bit( var_tt, b ) ) );
@@ -576,7 +492,6 @@ private:
 			return pntk.create_nary_xor( ltfi );
 		};
 
-		// for ( auto b{ 1u }; b < func_.num_bits(); ++b )
 		for ( auto b{ 1u }; b < repr_normal_.num_bits(); ++b )
 		{
 			for ( auto i{ 0u }; i < ltfi_vars_.size() / 2; ++i )
@@ -584,7 +499,6 @@ private:
 				truth_vars_[b].emplace_back( pntk.create_and( create_xor_clause( ltfi_vars_[2 * i], b ), create_xor_clause( ltfi_vars_[2 * i + 1], b ) ) );
 			}
 			const auto po = create_xor_clause( ltfi_vars_.back(), b );
-			// pntk.create_po( kitty::get_bit( func_, b ) ? po : pntk.create_not( po ) );
 			pntk.create_po( kitty::get_bit( repr_normal_, b ) ? po : pntk.create_not( po ) );
 		}
 	}
@@ -613,7 +527,7 @@ private:
 			range_end += and_fence[d];
 		}
 		// (2) for any AND with a certain MD d, none of the AND with the same MD can be its fanin;
-		// This is already guaranteed by removing the corresponding selection variables
+		// This is naturally guaranteed by removing the corresponding selection variables
 	}
 
 	void add_schedule_constraint( problem_network_t& pntk, std::vector<uint8_t> const& and_fence, schedule const& s )
@@ -639,7 +553,6 @@ private:
 	{
 		for ( auto j{ 0u }; j < num_vars_ + ltfi_vars_.size() / 2; ++j )
 		{
-			// if ( ( j < num_vars_ ) && !kitty::has_var( func_, j ) )
 			if ( ( j < num_vars_ ) && !kitty::has_var( repr_normal_, j ) )
 			{
 				continue;
@@ -785,24 +698,6 @@ private:
 
 		( *p_cache_ )[num_vars_].insert( { std::make_pair( *( repr_.cbegin() ), signature ), po } );
 
-		// verifying the Boolean function implemented by the constructed XAG
-		// if ( ps_.verify_solution )
-		// {
-		// 	auto result = simulate<kitty::static_truth_table<5u>>( *p_xag_cache_ )[0];
-		// 	const std::string result_str = kitty::to_hex( result ).substr( 0, 1 << ( num_vars_ - 2 ) );
-
-		// 	const std::string func_str = kitty::to_hex( repr_ );
-		// 	if ( result_str != func_str )
-		// 	{
-		// 		fmt::print( "[e] incorrect XAG implementation for {}, whose implemented function is {}...\n", func_str, result_str );
-		// 		abort();
-		// 	}
-		// 	else
-		// 	{
-		// 		fmt::print( "[m] the XAG implementation is verified to be correct.\n" );
-		// 	}
-		// }
-
 		return po;
 	}
 
@@ -815,12 +710,6 @@ private:
 		encode( pntk, and_fence, s );
 		if( const auto sat = solve( pntk ); sat )
 		{
-
-
-			/* for debugging */
-			// fmt::print( "[m] found an exact implementation\n" );
-
-
 			return construct_repr_based_xag( decompose_to_xag( pntk, signature ) );
 		}
 
@@ -829,16 +718,11 @@ private:
 
 	xag_network::signal construct_repr_based_xag( xag_network::signal const& po_cache )
 	{
-		// xag_network xag;
-		// std::vector<xag_network::signal> pis( num_vars_ );
-		// std::generate( pis.begin(), pis.end(), [&]() { return xag.create_pi(); } );
-
 		// input negation
 		for ( auto i{ 0u }; i < num_vars_; ++i )
 		{
 			if ( ( phase_ >> i ) & 1 )
 			{
-				// pis[i] = xag.create_not( pis[i] );
 				pis_res_[i] = p_xag_res_->create_not( pis_res_[i] );
 			}
 		}
@@ -847,51 +731,26 @@ private:
 		std::vector<xag_network::signal> pis_res_perm( num_vars_ );
 		for ( auto i{ 0u }; i < pis_res_perm.size(); ++i )
 		{
-			// pis_perm[i] = pis[perm_[i]];
 			pis_res_perm[i] = pis_res_[perm_[i]];
 		}
 
 		xag_network::signal po;
 		if ( p_xag_cache_->is_constant( p_xag_cache_->get_node( po_cache ) ) )
 		{
-			// po = xag.get_constant( p_xag_cache_->is_complemented( po_cache ) );
 			po = p_xag_res_->get_constant( p_xag_cache_->is_complemented( po_cache ) );
 		}
 		else
 		{
 			cut_view<xag_network> cache_partial{ *p_xag_cache_, pis_cache_, po_cache };
 
-			// po = cleanup_dangling( cache_partial, xag, pis_perm.begin(), pis_perm.end() ).front();
 			po = cleanup_dangling( cache_partial, *p_xag_res_, pis_res_perm.begin(), pis_res_perm.end() ).front();
 		}
 
 		// output negation
 		if ( ( phase_ >> num_vars_ ) & 1 )
 		{
-			// po = xag.create_not( po );
 			po = p_xag_res_->create_not( po );
 		}
-
-		// xag.create_po( po );
-
-		// verifying the Boolean function implemented by the constructed XAG
-		// if ( ps_.verify_solution )
-		// {
-		// 	auto result = simulate<kitty::static_truth_table<5u>>( xag )[0];
-		// 	const std::string result_str = kitty::to_hex( result ).substr( 0, 1 << ( num_vars_ - 2 ) );
-		// 	const std::string func_str = kitty::to_hex( func_ );
-		// 	if ( result_str != func_str )
-		// 	{
-		// 		fmt::print( "[e] incorrect XAG implementation for {}, whose implemented function is {}...\n", func_str, result_str );
-		// 		abort();
-		// 	}
-		// 	else
-		// 	{
-		// 		fmt::print( "[m] the XAG implementation is verified to be correct.\n" );
-		// 	}
-		// }
-
-		// return xag;
 
 		return po;
 	}
@@ -906,8 +765,8 @@ private:
 	std::vector<uint32_t> input_arrival_times_;
 	std::vector<std::vector<signal<problem_network_t>>> ltfi_vars_;
 	std::vector<std::vector<signal<problem_network_t>>> truth_vars_;
-	const fhe_optimization_exact_syn_params ps_;
-	fhe_optimization_exact_syn_stats* pst_;
+	const lvl_fhe_optimization_exact_syn_params ps_;
+	lvl_fhe_optimization_exact_syn_stats* pst_;
 
 	kitty::dynamic_truth_table repr_;
 	bool invert_;
@@ -922,15 +781,13 @@ private:
 	std::shared_ptr<std::vector<std::unordered_map<std::pair<uint64_t, std::vector<uint8_t>>, xag_network::signal, cache_entry_hash>>> p_cache_;
 };
 
-/* TODO : XOR minimization */
-
 } /* detail */
 
 template<bill::solvers Solver>
-class fhe_optimization_exact_syn
+class lvl_fhe_optimization_exact_syn
 {
 public:
-	fhe_optimization_exact_syn( fhe_optimization_exact_syn_params const& ps = {}, fhe_optimization_exact_syn_stats* pst = nullptr )
+	lvl_fhe_optimization_exact_syn( lvl_fhe_optimization_exact_syn_params const& ps = {}, lvl_fhe_optimization_exact_syn_stats* pst = nullptr )
 		: ps_( ps ), pst_( pst ),
 	    p_xag_cache_( std::make_shared<xag_network>() ),
 	    p_blacklist_( std::make_shared<std::vector<std::vector<std::pair<uint64_t, std::vector<uint8_t>>>>>() ),
@@ -943,7 +800,7 @@ public:
 		load_blacklist();
 	}
 
-	~fhe_optimization_exact_syn()
+	~lvl_fhe_optimization_exact_syn()
 	{
 		write_xag_cache();
 		write_blacklist();
@@ -967,400 +824,311 @@ public:
 		}
 
 		on_signal( { *p_po, c_m_depth } );
-
-
-		/* for debugging */
-		// fmt::print( "[m] exact synthesis-based new implementation is : Node {}{}, with the delay of {}\n", ( res.is_complemented( *p_po ) ? "!" : "" ), res.get_node( *p_po ), c_m_depth );
-
-
-		return { c_m_depth, *p_po };
+    
+    return { c_m_depth, *p_po };
 	}
 
-	// template<typename Fn>
-	// uint32_t run1( xag_network& res, kitty::dynamic_truth_table const& func, std::vector<signal_level_pair> const& inputs, uint32_t g_m_depth, Fn&& on_signal ) const
-	// {
-	// 	const auto num_vars = func.num_vars();
-	// 	assert( num_vars == inputs.size() );
-	// 	uint32_t c_m_depth{ g_m_depth };
-	// 	std::vector<xag_network::signal> pis( num_vars, res.get_constant( false ) );
-	// 	std::vector<uint32_t> delays( num_vars, 0u );
-	// 	for ( auto i{ 0u }; i < num_vars; ++i )
-	// 	{
-	// 		pis[i] = inputs[i].f;
-	// 		delays[i] = inputs[i].m_depth;
-	// 	}
+  void load_cache( std::string cache_to_read = "fhe_opt_cache", std::string xag_cache_to_read = "fhe_opt_xag_cache" )
+  {
+    if ( !ps_.use_exisiting_cache )
+    {
+      if ( ps_.verbose )
+      {
+        fmt::print( "[i] skip loading exisiting cache...\n" );
+      }
+      return;
+    }
 
-	// 	auto p_sol = detail::md_optimization_exact_syn<Solver>( func, g_m_depth, c_m_depth, delays, ps_, pst_,
-	// 	                                                        std::make_shared<xag_network>( xag_cache_ ), pis_cache_,
-	// 	                                                        std::make_shared<std::vector<std::vector<std::pair<uint64_t, std::vector<uint8_t>>>>>( blacklist_ ),
-	// 	                                                        std::make_shared<std::vector<std::unordered_map<std::pair<uint64_t, std::vector<uint8_t>>, xag_network::signal, detail::cache_entry_hash>>>( cache_ ) ).exact_syn_flow();
-	// 	if ( !p_sol )
-	// 	{
-	// 		return g_m_depth;
-	// 	}
+    stopwatch t_parse_cache( pst_->time_parse_cache );
 
+    std::ifstream xag_cache;
+    xag_cache.open( xag_cache_to_read, std::ios::in );
+    std::string item;
+    std::getline( xag_cache, item );
+    xag_cache.close();
 
-	// 	/* for debugging */
-	// 	if ( ps_.verify_solution )
-	// 	{
-	// 		auto result = simulate<kitty::static_truth_table<5u>>( *p_sol )[0];
-	// 		const std::string result_str = kitty::to_hex( result ).substr( 0, 1 << ( func.num_vars() - 2 ) );
-	// 		const std::string func_str = kitty::to_hex( func );
-	// 		if ( result_str != func_str )
-	// 		{
-	// 			fmt::print( "[e] incorrect XAG implementation for {}, whose implemented function is {}...\n", func_str, result_str );
-	// 			abort();
-	// 		}
-	// 		else
-	// 		{
-	// 			// fmt::print( "[m] the XAG implementation is verified to be correct ( {} v.s. {} ).\n", func_str, result_str );
-	// 			fmt::print( "[m] the XAG implementation is verified to be correct.\n" );
-	// 		}
-	// 	}
+    std::vector<xag_network::signal> xag_cache_signals( pis_cache_ );
+    std::vector<std::string> signals;
+    std::stringstream ss( item );
+    while ( std::getline( ss, item, ' ' ) )
+    {
+      signals.emplace_back( item );
+    }
 
-	// 	std::vector<xag_network::signal> sol_pis;
-	// 	p_sol->foreach_pi( [&sol_pis]( auto const& pi ) { sol_pis.emplace_back( pi ); } );
-	// 	if ( sol_pis.size() != pis.size() )
-	// 	{
-	// 		fmt::print( "[e] the numbers of inputs do not match!\n" );
-	// 		abort();
-	// 	}
-	// 	std::vector<xag_network::signal> sol_pos;
-	// 	p_sol->foreach_po( [&sol_pos]( auto const& po ) { sol_pos.emplace_back( po ); } );
-	// 	// if ( sol_pos.size() != 1 )
-	// 	// {
-	// 	// 	fmt::print( "[e] exactly synthesized partial network has {} pos\n", sol_pos.size() );
-	// 	// 	abort();
-	// 	// }
-		
-	// 	xag_network::signal po;
-	// 	if ( p_sol->is_constant( p_sol->get_node( sol_pos[0] ) ) )
-	// 	{
-	// 		fmt::print( "[m] new implementation is a constant!\n" );
-	// 		po = res.get_constant( p_sol->is_complemented( sol_pos[0] ) );
-	// 	}
-	// 	else
-	// 	{
-	// 		cut_view<xag_network> sol{ *p_sol, sol_pis, sol_pos[0] };
-	// 		po = cleanup_dangling( sol, res, pis.begin(), pis.end() ).front();
-	// 	}
-	// 	on_signal( { po, c_m_depth } );
+    assert( signals.size() % 2 == 0 );
+    for ( auto i{ 0u }; i < signals.size(); i += 2u )
+    {
+      auto signal1_ul = std::stoul( signals[i] );
+      auto signal2_ul = std::stoul( signals[i + 1] );
 
+      xag_network::signal signal1{}, signal2{};
 
-	// 	/* for debugging */
-	// 	fmt::print( "[m] exact synthesis-based new implementation is : Node {}{}, with the delay of {}\n", ( res.is_complemented( po ) ? "!" : "" ), res.get_node( po ), c_m_depth );
+      if ( signal1_ul == 0u )
+      {
+        signal1 = p_xag_cache_->get_constant( false );
+      }
+      else if ( signal1_ul == 1u )
+      {
+        signal1 = p_xag_cache_->get_constant( true );
+      }
+      else
+      {
+        signal1 = xag_cache_signals[signal1_ul / 2 - 1] ^ ( signal1_ul % 2 );
+      }
+      if ( signal2_ul == 0u )
+      {
+        signal2 = p_xag_cache_->get_constant( false );
+      }
+      else if ( signal2_ul == 1u )
+      {
+        signal2 = p_xag_cache_->get_constant( true );
+      }
+      else
+      {
+        signal2 = xag_cache_signals[signal2_ul / 2 - 1] ^ ( signal2_ul % 2 );
+      }
 
+      if ( signal1_ul > signal2_ul )
+      {
+        xag_cache_signals.emplace_back( p_xag_cache_->create_xor( signal1, signal2 ) );
+      }
+      else
+      {
+        xag_cache_signals.emplace_back( p_xag_cache_->create_and( signal1, signal2 ) );
+      }
+    }
 
-	// 	return c_m_depth;
-	// }
+    std::ifstream cache;
+    cache.open( cache_to_read, std::ios::in );
+    uint8_t var_cnt{ 0u };
 
-void load_cache( std::string cache_to_read = "fhe_opt_cache", std::string xag_cache_to_read = "fhe_opt_xag_cache")
-{
-	if ( !ps_.use_exisiting_cache )
-	{
-		if ( ps_.verbose )
-		{
-			fmt::print( "[i] skip loading exisiting cache...\n" );
-		}
-		return;
-	}
+    while ( std::getline( cache, item ) )
+    {
+      if ( item.empty() )
+      {
+        if ( ++var_cnt > 5u )
+        {
+          break;
+        }
+        continue;
+      }
 
-	stopwatch t_parse_cache( pst_->time_parse_cache );
+      std::vector<std::string> info;
+      std::stringstream ss( item );
+      while ( std::getline( ss, item, ' ' ) )
+      {
+        info.emplace_back( item );
+      }
+      std::vector<uint8_t> signature( var_cnt );
+      for ( auto i{ 0u }; i < var_cnt; ++i )
+      {
+        signature[i] = static_cast<uint8_t>( std::stoul( info[i + 1] ) );
+      }
+      xag_network::signal signal_repr = xag_cache_signals[std::stoul( info.back() ) / 2 - 1] ^ ( std::stoul( info.back() ) % 2 );
+      p_xag_cache_->create_po( signal_repr );
+      ( *p_cache_ )[var_cnt][std::make_pair( std::stoul( info[0] ), signature )] = signal_repr;
+      ++num_cache_entry_old;
+    }
+    cache.close();
 
-	std::ifstream xag_cache;
-	xag_cache.open( xag_cache_to_read, std::ios::in );
-	std::string item;
-	std::getline( xag_cache, item );
-	xag_cache.close();
+    if ( ps_.verbose )
+    {
+      fmt::print( "[i] finished cache loading\n" );
+    }
+  }
 
-	std::vector<xag_network::signal> xag_cache_signals( pis_cache_ );
-	std::vector<std::string> signals;
-	std::stringstream ss( item );
-	while ( std::getline( ss, item, ' ' ) )
-	{
-		signals.emplace_back( item );
-	}
+  void load_blacklist( std::string blacklist_to_read = "fhe_opt_blacklist" )
+  {
+    if ( !ps_.use_exisiting_cache )
+    {
+      if ( ps_.verbose )
+      {
+        fmt::print( "[i] skip loading exisiting blacklist...\n" );
+      }
+      return;
+    }
 
-	assert( signals.size() % 2 == 0 );
-	for ( auto i{ 0u }; i < signals.size(); i += 2u )
-	{
-		auto signal1_ul = std::stoul( signals[i] );
-		auto signal2_ul = std::stoul( signals[i + 1] );
+    stopwatch t_parse_cache( pst_->time_parse_cache );
 
-		xag_network::signal signal1{}, signal2{};
+    std::ifstream blacklist;
+    blacklist.open( blacklist_to_read, std::ios::in );
+    uint8_t var_cnt{ 0u };
+    std::string item;
 
-		if ( signal1_ul == 0u )
-		{
-			signal1 = p_xag_cache_->get_constant( false );
-		}
-		else if ( signal1_ul == 1u )
-		{
-			signal1 = p_xag_cache_->get_constant( true );
-		}
-		else
-		{
-			signal1 = xag_cache_signals[signal1_ul / 2 - 1] ^ ( signal1_ul % 2 );
-		}
-		if ( signal2_ul == 0u )
-		{
-			signal2 = p_xag_cache_->get_constant( false );
-		}
-		else if ( signal2_ul == 1u )
-		{
-			signal2 = p_xag_cache_->get_constant( true );
-		}
-		else
-		{
-			signal2 = xag_cache_signals[signal2_ul / 2 - 1] ^ ( signal2_ul % 2 );
-		}
+    while ( std::getline( blacklist, item ) )
+    {
+      if ( item.empty() )
+      {
+        if ( ++var_cnt > 5u )
+        {
+          break;
+        }
+        continue;
+      }
 
-		if ( signal1_ul > signal2_ul )
-		{
-			xag_cache_signals.emplace_back( p_xag_cache_->create_xor( signal1, signal2 ) );
-		}
-		else
-		{
-			xag_cache_signals.emplace_back( p_xag_cache_->create_and( signal1, signal2 ) );
-		}
-	}
+      std::stringstream ss( item );
+      std::vector<std::string> info;
+      while ( std::getline( ss, item, ' ' ) )
+      {
+        info.emplace_back( item );
+      }
+      std::vector<uint8_t> signature( var_cnt );
+      for ( auto i{ 0u }; i < var_cnt; ++i )
+      {
+        signature[i] = static_cast<uint8_t>( std::stoul( info[i + 1] ) );
+      }
+      ( *p_blacklist_ )[var_cnt].emplace_back( std::make_pair( std::stoul( info[0] ), signature ) );
+      ++num_blacklist_entry_old;
 
-	std::ifstream cache;
-	cache.open( cache_to_read, std::ios::in );
-	uint8_t var_cnt{ 0u };
+    }
+    blacklist.close();
 
-	while ( std::getline( cache, item ) )
-	{
-		if ( item.empty() )
-		{
-			if ( ++var_cnt > 5u )
-			{
-				break;
-			}
-			continue;
-		}
+    if ( ps_.verbose )
+    {
+      fmt::print( "[i] finished blacklist loading\n" );
+    }
+  }
 
-		std::vector<std::string> info;
-		std::stringstream ss( item );
-		while ( std::getline( ss, item, ' ' ) )
-		{
-			info.emplace_back( item );
-		}
-		std::vector<uint8_t> signature( var_cnt );
-		for ( auto i{ 0u }; i < var_cnt; ++i )
-		{
-			signature[i] = static_cast<uint8_t>( std::stoul( info[i + 1] ) );
-		}
-		xag_network::signal signal_repr = xag_cache_signals[std::stoul( info.back() ) / 2 - 1] ^ ( std::stoul( info.back() ) % 2 );
-		p_xag_cache_->create_po( signal_repr );
-		( *p_cache_ )[var_cnt][std::make_pair( std::stoul( info[0] ), signature )] = signal_repr;
-		++num_cache_entry_old;
-	}
-	cache.close();
+  void write_xag_cache( std::string cache_to_write = "lvl_fhe_opt_cache", std::string xag_cache_to_write = "lvl_fhe_opt_xag_cache" )
+  {
+    num_cache_entry_new = 0u;
+    for ( auto i{ 0u }; i < ( *p_cache_ ).size(); ++i )
+    {
+      num_cache_entry_new += ( *p_cache_ )[i].size();
+    }
+    if ( num_cache_entry_new == num_cache_entry_old )
+    {
+      fmt::print( "[i] no new implementation synthesized, skipping recording cache...\n" );
+      return;
+    }
+    else
+    {
+      fmt::print( "[i] more implementation synthesized : {} -> {}\n", num_cache_entry_old, num_cache_entry_new );
+    }
 
-	if ( ps_.verbose )
-	{
-		fmt::print( "[i] finished cache loading\n" );
-	}
-}
+    std::ofstream xag_cache;
+    xag_cache.open( xag_cache_to_write, std::ios::out );
 
-void load_blacklist( std::string blacklist_to_read = "fhe_opt_blacklist" )
-{
-	if ( !ps_.use_exisiting_cache )
-	{
-		if ( ps_.verbose )
-		{
-			fmt::print( "[i] skip loading exisiting blacklist...\n" );
-		}
-		return;
-	}
+    if ( xag_cache.is_open() )
+    {
+      node_map<xag_network::signal, xag_network> old2new{ *p_xag_cache_ };
+      xag_network xag;
 
-	stopwatch t_parse_cache( pst_->time_parse_cache );
+      // constants
+      old2new[p_xag_cache_->get_constant( false )] = xag.get_constant( false );
 
-	std::ifstream blacklist;
-	blacklist.open( blacklist_to_read, std::ios::in );
-	uint8_t var_cnt{ 0u };
-	std::string item;
+      // pis
+      p_xag_cache_->foreach_pi( [&]( auto const& n ) {
+        old2new[n] = xag.create_pi();
+      } );
 
-	while ( std::getline( blacklist, item ) )
-	{
-		if ( item.empty() )
-		{
-			if ( ++var_cnt > 5u )
-			{
-				break;
-			}
-			continue;
-		}
+      // gates
+      progress_bar pbar{ ( *p_xag_cache_ ).size(), "Recording cache |{0}| node = {1:>4} / " + std::to_string( ( *p_xag_cache_ ).size() ), true };
+      topo_view<xag_network>{ *p_xag_cache_ }.foreach_node( [&]( auto const& n, auto index ) {
+        pbar( index, index );
 
-		std::stringstream ss( item );
-		std::vector<std::string> info;
-		while ( std::getline( ss, item, ' ' ) )
-		{
-			info.emplace_back( item );
-		}
-		std::vector<uint8_t> signature( var_cnt );
-		for ( auto i{ 0u }; i < var_cnt; ++i )
-		{
-			signature[i] = static_cast<uint8_t>( std::stoul( info[i + 1] ) );
-		}
-		( *p_blacklist_ )[var_cnt].emplace_back( std::make_pair( std::stoul( info[0] ), signature ) );
-		++num_blacklist_entry_old;
+        if ( p_xag_cache_->is_constant( n ) || p_xag_cache_->is_pi( n ) )
+        {
+          return;
+        }
 
-	}
-	blacklist.close();
+        std::vector<xag_network::signal> children;
+        p_xag_cache_->foreach_fanin( n, [&]( auto const& fi ) {
+          auto const fi_new = old2new[fi];
+          children.emplace_back( p_xag_cache_->is_complemented( fi ) ? xag.create_not( fi_new ) : fi_new );
+          xag_cache << static_cast<uint64_t>( ( children.back().index << 1 ) + children.back().complement ) << " ";
+        } );
+        old2new[n] = xag.clone_node( *p_xag_cache_, n, children );
+        return;
+      } );
 
-	if ( ps_.verbose )
-	{
-		fmt::print( "[i] finished blacklist loading\n" );
-	}
-}
+      xag_cache.close();
+      fmt::print( "\n[i] cached xag recorded into file {}\n", xag_cache_to_write );
 
-void write_xag_cache( std::string cache_to_write = "fhe_opt_cache", std::string xag_cache_to_write = "fhe_opt_xag_cache" )
-{
-	num_cache_entry_new = 0u;
-	for ( auto i{ 0u }; i < ( *p_cache_ ).size(); ++i )
-	{
-		num_cache_entry_new += ( *p_cache_ )[i].size();
-	}
-	if ( num_cache_entry_new == num_cache_entry_old )
-	{
-		fmt::print( "[i] no new implementation synthesized, skipping recording cache...\n" );
-		return;
-	}
-	else
-	{
-		fmt::print( "[i] more implementation synthesized : {} -> {}\n", num_cache_entry_old, num_cache_entry_new );
-	}
+      std::ofstream cache;
+      cache.open( cache_to_write, std::ios::out );
 
-	std::ofstream xag_cache;
-	xag_cache.open( xag_cache_to_write, std::ios::out );
+      if ( cache.is_open() )
+      {
+        for ( auto i{ 0u }; i < ( *p_cache_ ).size(); ++i )
+        {
+          for ( auto it{ ( *p_cache_ )[i].begin() }; it != ( *p_cache_ )[i].end(); ++it )
+          {
+            cache << it->first.first << " ";
+            std::vector<uint8_t> signature( it->first.second );
+            for ( uint8_t byte : signature )
+            {
+              cache << static_cast<uint32_t>( byte ) << " ";
+            }
+            auto const f_new = old2new[it->second];
+            cache << static_cast<uint32_t>( ( f_new.index << 1 ) + ( f_new.complement ^ p_xag_cache_->is_complemented( it->second ) ) ) << "\n";
+          }
+          cache << "\n";
+        }
 
-	if ( xag_cache.is_open() )
-	{
-		node_map<xag_network::signal, xag_network> old2new{ *p_xag_cache_ };
-		xag_network xag;
+        cache.close();
+        fmt::print( "[i] cached correspondence recorded into file {}\n", cache_to_write );
+      }
+      else
+      {
+        fmt::print( "[i] unable to open file {}\n", cache_to_write );
+      }
+    }
+    else
+    {
+      fmt::print( "[i] unable to open file {}\n", xag_cache_to_write );
+    }
+  }
 
-		// constants
-		old2new[p_xag_cache_->get_constant( false )] = xag.get_constant( false );
+  void write_blacklist( std::string blacklist_to_write = "fhe_opt_blacklist" )
+  {
+    num_blacklist_entry_new = 0u;
+    for ( auto i{ 0u }; i < ( *p_blacklist_ ).size(); ++i )
+    {
+      num_blacklist_entry_new += ( *p_blacklist_ )[i].size();
+    }
+    if ( num_blacklist_entry_new == num_blacklist_entry_old )
+    {
+      fmt::print( "[i] no new instances add to the blacklist, skipping recording blacklist...\n" );
+      return;
+    }
+    else
+    {
+      fmt::print( "[i] more instances found to be blacklisted : {} -> {}\n", num_blacklist_entry_old, num_blacklist_entry_new );
+    }
 
-		// pis
-		p_xag_cache_->foreach_pi( [&]( auto const& n ) {
-			old2new[n] = xag.create_pi();
-		} );
+    std::ofstream blacklist;
+    blacklist.open( blacklist_to_write, std::ios::out );
 
-		// gates
-		progress_bar pbar{ ( *p_xag_cache_ ).size(), "Recording cache |{0}| node = {1:>4} / " + std::to_string( ( *p_xag_cache_ ).size() ), true };
-		topo_view<xag_network>{ *p_xag_cache_ }.foreach_node( [&]( auto const& n, auto index ) {
-			pbar( index, index );
+    if ( blacklist.is_open() )
+    {
+      for ( auto i{ 0u }; i < ( *p_blacklist_ ).size(); ++i )
+      {
+        for ( auto const& item : ( *p_blacklist_ )[i] )
+        {
+          blacklist << item.first << " ";
+          std::vector<uint8_t> signature( item.second );
+          for ( uint8_t byte : signature )
+          {
+            blacklist << static_cast<uint32_t>( byte ) << " ";
+          }
+          blacklist << "\n";
+        }
+        blacklist << "\n";
+      }
 
-			if ( p_xag_cache_->is_constant( n ) || p_xag_cache_->is_pi( n ) )
-			{
-				return;
-			}
-
-			std::vector<xag_network::signal> children;
-			p_xag_cache_->foreach_fanin( n, [&]( auto const& fi ) {
-				auto const fi_new = old2new[fi];
-				children.emplace_back( p_xag_cache_->is_complemented( fi ) ? xag.create_not( fi_new ) : fi_new );
-				xag_cache << static_cast<uint64_t>( ( children.back().index << 1 ) + children.back().complement ) << " ";
-			} );
-			old2new[n] = xag.clone_node( *p_xag_cache_, n, children );
-			return;
-		} );
-
-		xag_cache.close();
-		fmt::print( "\n[i] cached xag recorded into file {}\n", xag_cache_to_write );
-
-		std::ofstream cache;
-		cache.open( cache_to_write, std::ios::out );  // trunc mode instead?
-
-		if ( cache.is_open() )
-		{
-			for ( auto i{ 0u }; i < ( *p_cache_ ).size(); ++i )
-			{
-				for ( auto it{ ( *p_cache_ )[i].begin() }; it != ( *p_cache_ )[i].end(); ++it )
-				{
-					cache << it->first.first << " ";
-					std::vector<uint8_t> signature( it->first.second );
-					// assert( signature.size() == i );
-					for ( uint8_t byte : signature )
-					{
-						cache << static_cast<uint32_t>( byte ) << " ";
-					}
-					auto const f_new = old2new[it->second];
-					cache << static_cast<uint32_t>( ( f_new.index << 1 ) + ( f_new.complement ^ p_xag_cache_->is_complemented( it->second ) ) ) << "\n";
-				}
-				cache << "\n";
-			}
-
-			cache.close();
-			fmt::print( "[i] cached correspondence recorded into file {}\n", cache_to_write );
-		}
-		else
-		{
-			fmt::print( "[i] unable to open file {}\n", cache_to_write );
-		}
-	}
-	else
-	{
-		fmt::print( "[i] unable to open file {}\n", xag_cache_to_write );
-	}
-}
-
-void write_blacklist( std::string blacklist_to_write = "fhe_opt_blacklist" )
-{
-	num_blacklist_entry_new = 0u;
-	for ( auto i{ 0u }; i < ( *p_blacklist_ ).size(); ++i )
-	{
-		num_blacklist_entry_new += ( *p_blacklist_ )[i].size();
-	}
-	if ( num_blacklist_entry_new == num_blacklist_entry_old )
-	{
-		fmt::print( "[i] no new instances add to the blacklist, skipping recording blacklist...\n" );
-		return;
-	}
-	else
-	{
-		fmt::print( "[i] more instances found to be blacklisted : {} -> {}\n", num_blacklist_entry_old, num_blacklist_entry_new );
-	}
-
-	std::ofstream blacklist;
-	blacklist.open( blacklist_to_write, std::ios::out );
-
-	if ( blacklist.is_open() )
-	{
-		for ( auto i{ 0u }; i < ( *p_blacklist_ ).size(); ++i )
-		{
-			/* for debugging */
-			// fmt::print( "[m] in the {}th entry, there are {} items in the blacklist\n", i, ( *p_blacklist_ )[i].size() );
-			
-
-			for ( auto const& item : ( *p_blacklist_ )[i] )
-			{
-				blacklist << item.first << " ";
-				std::vector<uint8_t> signature( item.second );
-				// assert( signature.size() == i );
-				for ( uint8_t byte : signature )
-				{
-					blacklist << static_cast<uint32_t>( byte ) << " ";
-				}
-				blacklist << "\n";
-			}
-			blacklist << "\n";
-		}
-
-		blacklist.close();
-		fmt::print( "[i] cached blacklist recorded into file {}\n", blacklist_to_write );
-	}
-	else
-	{
-		fmt::print( "[i] unable to open file {}\n", blacklist_to_write );
-	}
-}
+      blacklist.close();
+      fmt::print( "[i] cached blacklist recorded into file {}\n", blacklist_to_write );
+    }
+    else
+    {
+      fmt::print( "[i] unable to open file {}\n", blacklist_to_write );
+    }
+  }
 
 private:
-	const fhe_optimization_exact_syn_params ps_;
-	fhe_optimization_exact_syn_stats* pst_;
+	const lvl_fhe_optimization_exact_syn_params ps_;
+	lvl_fhe_optimization_exact_syn_stats* pst_;
 
 	std::shared_ptr<xag_network> p_xag_cache_;
 	std::vector<xag_network::signal> pis_cache_{ 5u };

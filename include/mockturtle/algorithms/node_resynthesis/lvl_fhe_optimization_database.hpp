@@ -10,25 +10,25 @@
 #include <kitty/spectral.hpp>
 #include <kitty/operations.hpp>
 #include <mockturtle/algorithms/cleanup.hpp>
-#include <mockturtle/algorithms/fhe_optimization.hpp>
+#include <mockturtle/algorithms/lvl_fhe_optimization.hpp>
 #include <mockturtle/utils/stopwatch.hpp>
 #include <mockturtle/views/cut_view.hpp>
 
 namespace mockturtle
 {
 
-struct fhe_optimization_database_params
+struct lvl_fhe_optimization_database_params
 {
 	bool verbose{ false };
 };
 
-struct fhe_optimization_database_stats
+struct lvl_fhe_optimization_database_stats
 {
-	stopwatch<>::duration time_parse_db { 0 };
-	stopwatch<>::duration time_classify { 0 };
+	stopwatch<>::duration time_parse_db{ 0 };
+	stopwatch<>::duration time_classify{ 0 };
 	stopwatch<>::duration time_construct{ 0 };
-	uint32_t cache_hit   { 0u };
-	uint32_t cache_miss  { 0u };
+	uint32_t cache_hit{ 0u };
+	uint32_t cache_miss{ 0u };
 	uint32_t unknown_func{ 0u };
 
 	void report() const
@@ -42,16 +42,16 @@ struct fhe_optimization_database_stats
 	}	
 };
 
-class fhe_optimization_database
+class lvl_fhe_optimization_database
 {
 public:
-	fhe_optimization_database( std::string const& dbname, fhe_optimization_database_params const& ps = {}, fhe_optimization_database_stats* pst = nullptr )
+	lvl_fhe_optimization_database( std::string const& dbname, lvl_fhe_optimization_database_params const& ps = {}, lvl_fhe_optimization_database_stats* pst = nullptr )
 		: ps_( ps ), pst_( pst )
 	{
 		build_db( dbname );
 	}
 
-	~fhe_optimization_database()
+	~lvl_fhe_optimization_database()
 	{
 		if ( ps_.verbose )
 		{
@@ -175,11 +175,6 @@ public:
 		/* post-process */
 		on_signal( { po, delay } );
 
-
-		/* for debugging */
-		// fmt::print( "[m] databased-based new implementation is : Node {}{}, with the delay of {}\n", ( res.is_complemented( po ) ? "!" : "" ), res.get_node( po ), delay );
-
-
 		return delay;
 	}
 
@@ -290,8 +285,8 @@ private:
 	}
 
 private:
-	const fhe_optimization_database_params ps_;
-	fhe_optimization_database_stats* pst_;
+	const lvl_fhe_optimization_database_params ps_;
+	lvl_fhe_optimization_database_stats* pst_;
 
 	xag_network xag_db_;
 	std::vector<xag_network::signal> db_pis_{ 5u };
