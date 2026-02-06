@@ -154,6 +154,7 @@ public:
 
     /* for debugging */
     // fmt::print( "[m] Require {} bound set functions.\n", _bound_set.size() );
+    // fmt::print( "[m] Profiling a decomp solution:\n" );
 
     _decomp_bs.clear();
 
@@ -355,6 +356,11 @@ public:
             best_sel_polar = _sel_polar;
             best_min_mc_mux = _min_mc_mux;
           }
+          /* for debugging */
+          // else
+          // {
+          //   fmt::print( "[m] The estimated cost of the current decomp solution is too high. Abandoning...\n" );
+          // }
         }
       }
 
@@ -1784,7 +1790,18 @@ private:
       kitty::create_nth_var( fs_vars[i], i );
       decomp_res.support.push_back( _num_vars + i );
       /* TODO : Skip trivial cases? */
+
+      /* for debugging */
+      // fmt::print( "[m] A FS function is added. Its support is: " );
+      // for ( auto const& ele : dec.support )
+      // {
+      //   fmt::print( "{} ", ele );
+      // }
+      // fmt::print( "; its function is " );
+      // kitty::print_hex( dec.tt );
+      // fmt::print( "\n" );
     }
+    // fmt::print( "[m] Finished profiling the decomp solution.\n" );
     
     std::vector<kitty::dynamic_truth_table> bs_vars;
     uint32_t offset = 0u;

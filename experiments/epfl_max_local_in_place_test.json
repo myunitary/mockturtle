@@ -1,0 +1,35 @@
+[
+  {
+    "entries": [
+      {
+        "# itr.": 1,
+        "AND count": 128,
+        "benchmark": "adder_opt",
+        "joint AND count": 128,
+        "opt. joint AND count": 128
+      },
+      {
+        "# itr.": 4,
+        "AND count": 5291,
+        "benchmark": "div_opt",
+        "joint AND count": 5205,
+        "opt. joint AND count": 5121
+      },
+      {
+        "# itr.": 1,
+        "AND count": 890,
+        "benchmark": "max_opt",
+        "joint AND count": 890,
+        "opt. joint AND count": 890
+      },
+      {
+        "# itr.": 3,
+        "AND count": 7653,
+        "benchmark": "multiplier_opt",
+        "joint AND count": 7410,
+        "opt. joint AND count": 7377
+      }
+    ],
+    "version": "8138ccb"
+  }
+]

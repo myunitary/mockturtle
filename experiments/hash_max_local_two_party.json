@@ -1,0 +1,25 @@
+[
+  {
+    "entries": [
+      {
+        "AND count": 9367,
+        "benchmark": "md5",
+        "joint AND count": 8169,
+        "opt. joint AND count": 8169
+      },
+      {
+        "AND count": 11515,
+        "benchmark": "sha1",
+        "joint AND count": 10124,
+        "opt. joint AND count": 10124
+      },
+      {
+        "AND count": 26927,
+        "benchmark": "sha256",
+        "joint AND count": 24718,
+        "opt. joint AND count": 24719
+      }
+    ],
+    "version": "cfbfc10"
+  }
+]

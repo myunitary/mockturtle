@@ -1,0 +1,7 @@
+read bitonic_sort_inc_1_8.v 
+write_verilog bitonic_sort_inc_4_8.v
+read_verilog bitonic_sort_inc_cleaned_final.v 
+write bitonic_sort_inc_2_8.v
+read_verilog bitonic_sort_inc_1_8.v 
+write_verilog bitonic_sort_inc_1_8.v
+source -s abc.rc

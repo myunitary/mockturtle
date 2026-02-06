@@ -1,0 +1,104 @@
+[
+  {
+    "entries": [
+      {
+        "AND count": 97,
+        "benchmark": "auction_N_2_W_16_opt",
+        "joint AND count": 97,
+        "opt. joint AND count": 97
+      },
+      {
+        "AND count": 975,
+        "benchmark": "auction_N_4_W_32_opt",
+        "joint AND count": 975,
+        "opt. joint AND count": 975
+      },
+      {
+        "AND count": 554,
+        "benchmark": "knn_comb_K_1_N_8_opt",
+        "joint AND count": 554,
+        "opt. joint AND count": 554
+      },
+      {
+        "AND count": 2394,
+        "benchmark": "knn_comb_K_3_N_16_opt",
+        "joint AND count": 2394,
+        "opt. joint AND count": 2394
+      },
+      {
+        "AND count": 7,
+        "benchmark": "voting_N_1_M_3_opt",
+        "joint AND count": 0,
+        "opt. joint AND count": 0
+      },
+      {
+        "AND count": 104,
+        "benchmark": "voting_N_2_M_4_opt",
+        "joint AND count": 88,
+        "opt. joint AND count": 88
+      }
+    ],
+    "version": "7538832"
+  },
+  {
+    "entries": [
+      {
+        "# itr.": 1,
+        "AND count": 97,
+        "benchmark": "auction_N_2_W_16_opt",
+        "joint AND count": 97,
+        "opt. joint AND count": 97
+      },
+      {
+        "# itr.": 1,
+        "AND count": 975,
+        "benchmark": "auction_N_4_W_32_opt",
+        "joint AND count": 975,
+        "opt. joint AND count": 975
+      },
+      {
+        "# itr.": 1,
+        "AND count": 554,
+        "benchmark": "knn_comb_K_1_N_8_opt",
+        "joint AND count": 554,
+        "opt. joint AND count": 554
+      },
+      {
+        "# itr.": 1,
+        "AND count": 2394,
+        "benchmark": "knn_comb_K_3_N_16_opt",
+        "joint AND count": 2394,
+        "opt. joint AND count": 2394
+      },
+      {
+        "# itr.": 1,
+        "AND count": 16001,
+        "benchmark": "stable_matching_comb_Ks_4_S_8_opt",
+        "joint AND count": 15970,
+        "opt. joint AND count": 15970
+      },
+      {
+        "# itr.": 1,
+        "AND count": 58723,
+        "benchmark": "stable_matching_comb_Ks_8_S_8_opt",
+        "joint AND count": 58640,
+        "opt. joint AND count": 58640
+      },
+      {
+        "# itr.": 1,
+        "AND count": 7,
+        "benchmark": "voting_N_1_M_3_opt",
+        "joint AND count": 7,
+        "opt. joint AND count": 7
+      },
+      {
+        "# itr.": 1,
+        "AND count": 104,
+        "benchmark": "voting_N_2_M_4_opt",
+        "joint AND count": 88,
+        "opt. joint AND count": 88
+      }
+    ],
+    "version": "82212d0"
+  }
+]

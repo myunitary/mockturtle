@@ -1,0 +1,31 @@
+[
+  {
+    "entries": [
+      {
+        "AND count": 1,
+        "benchmark": "point_and_ary_2",
+        "joint AND count": 1,
+        "opt. joint AND count": 1
+      },
+      {
+        "AND count": 3,
+        "benchmark": "point_and_ary_4",
+        "joint AND count": 3,
+        "opt. joint AND count": 3
+      },
+      {
+        "AND count": 7,
+        "benchmark": "point_and_ary_8",
+        "joint AND count": 7,
+        "opt. joint AND count": 7
+      },
+      {
+        "AND count": 15,
+        "benchmark": "point_and_ary_16",
+        "joint AND count": 15,
+        "opt. joint AND count": 15
+      }
+    ],
+    "version": "cfbfc10"
+  }
+]

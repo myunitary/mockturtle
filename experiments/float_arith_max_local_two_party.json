@@ -1,0 +1,42 @@
+[
+  {
+    "entries": [
+      {
+        "AND count": 5141,
+        "benchmark": "FP-add_opt",
+        "joint AND count": 4938,
+        "opt. joint AND count": 4873,
+        "runtime [s]": 318.02044677734375
+      },
+      {
+        "AND count": 48408,
+        "benchmark": "FP-div_opt",
+        "joint AND count": 44834,
+        "opt. joint AND count": 44787,
+        "runtime [s]": 425.7012634277344
+      },
+      {
+        "AND count": 315,
+        "benchmark": "FP-eq_opt",
+        "joint AND count": 191,
+        "opt. joint AND count": 89,
+        "runtime [s]": 230.50607299804688
+      },
+      {
+        "AND count": 377,
+        "benchmark": "FP-lt_opt",
+        "joint AND count": 253,
+        "opt. joint AND count": 155,
+        "runtime [s]": 205.4034881591797
+      },
+      {
+        "AND count": 16684,
+        "benchmark": "FP-mul_opt",
+        "joint AND count": 13113,
+        "opt. joint AND count": 13077,
+        "runtime [s]": 172.5140380859375
+      }
+    ],
+    "version": "cfbfc10"
+  }
+]

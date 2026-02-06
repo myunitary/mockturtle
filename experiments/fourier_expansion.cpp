@@ -5,9 +5,12 @@
 
 int main()
 {
-  uint32_t num_vars = 3u;
+  uint32_t num_vars = 4u;
   kitty::dynamic_truth_table tt( num_vars );
-  kitty::create_from_hex_string( tt, "60" );
+  // kitty::create_from_hex_string( tt, "fffe" );
+  // kitty::create_from_hex_string( tt, "fee8" );
+  // kitty::create_from_hex_string( tt, "e880" );
+  kitty::create_from_hex_string( tt, "8000" );
   kitty::detail::fourier_spectrum fs{ kitty::detail::fourier_spectrum::from_truth_table( tt ) };
   const std::vector<uint32_t> order = kitty::detail::get_rw_coeffecient_order( num_vars );
 

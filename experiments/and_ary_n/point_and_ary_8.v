@@ -1,0 +1,21 @@
+module point_and_ary_8( a0, a1, a2, a3, a4, a5, a6, a7, b0, b1, b2, b3, b4, b5, b6, b7, d0 );
+  input a0, a1, a2, a3, a4, a5, a6, a7;
+  input b0, b1, b2, b3, b4, b5, b6, b7;
+  output d0;
+  wire e0, e1, e2, e3, e4, e5, e6, e7,c0, c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11;
+  assign e0 = a0 ^ b0;
+  assign e1 = a1 ^ b1;
+  assign e2 = a2 ^ b2;
+  assign e3 = a3 ^ b3;
+  assign e4 = a4 ^ b4;
+  assign e5 = a5 ^ b5;
+  assign e6 = a6 ^ b6;
+  assign e7 = a7 ^ b7;
+  assign c0 = e0 & e1;
+  assign c1 = e2 & e3;
+  assign c2 = e4 & e5;
+  assign c3 = e6 & e7;
+  assign c4 = c0 & c1;
+  assign c5 = c2 & c3;
+  assign d0 = c4 & c5;
+endmodule

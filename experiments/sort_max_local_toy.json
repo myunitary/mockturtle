@@ -1,0 +1,13 @@
+[
+  {
+    "entries": [
+      {
+        "AND count": 7,
+        "benchmark": "bitonic_sort_inc_1_4_1",
+        "joint AND count": 7,
+        "opt. joint AND count": 2
+      }
+    ],
+    "version": "cfbfc10"
+  }
+]

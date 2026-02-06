@@ -1,0 +1,17 @@
+[
+  {
+    "entries": [
+      {
+        "#mc_init": 94311,
+        "#mc_opt": 6446,
+        "benchmark": "aes_1cc_firstframe"
+      },
+      {
+        "#mc_init": 351,
+        "#mc_opt": 48,
+        "benchmark": "hamming_32bit_1cc_firstframe"
+      }
+    ],
+    "version": "cfbfc10"
+  }
+]

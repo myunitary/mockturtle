@@ -1,0 +1,37 @@
+[
+  {
+    "entries": [
+      {
+        "AND count": 94311,
+        "benchmark": "aes_1cc_firstframe",
+        "joint AND count": 75139,
+        "opt. joint AND count": 75139
+      },
+      {
+        "AND count": 351,
+        "benchmark": "hamming_32bit_1cc_firstframe",
+        "joint AND count": 351,
+        "opt. joint AND count": 351
+      },
+      {
+        "AND count": 12037,
+        "benchmark": "Lite_MIPS_firstframe",
+        "joint AND count": 9381,
+        "opt. joint AND count": 9381
+      },
+      {
+        "AND count": 10670,
+        "benchmark": "mult_32bit_1cc_firstframe",
+        "joint AND count": 10670,
+        "opt. joint AND count": 10670
+      },
+      {
+        "AND count": 72,
+        "benchmark": "sum_8bit_1cc_firstframe",
+        "joint AND count": 72,
+        "opt. joint AND count": 72
+      }
+    ],
+    "version": "cfbfc10"
+  }
+]

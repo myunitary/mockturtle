@@ -1,0 +1,27 @@
+[
+  {
+    "entries": [
+      {
+        "#mc_init": 0,
+        "#mc_opt": 0,
+        "benchmark": "a23_64cc_firstframe"
+      },
+      {
+        "#mc_init": 92,
+        "#mc_opt": 92,
+        "benchmark": "comparator_32bit_unsigned_lt"
+      },
+      {
+        "#mc_init": 53,
+        "#mc_opt": 53,
+        "benchmark": "encoder_32bit_1cc_firstframe"
+      },
+      {
+        "#mc_init": 9856,
+        "#mc_opt": 1600,
+        "benchmark": "sha3_24cc_firstframe"
+      }
+    ],
+    "version": "cfbfc10"
+  }
+]

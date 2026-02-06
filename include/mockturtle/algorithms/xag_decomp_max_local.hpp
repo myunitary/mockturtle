@@ -263,7 +263,7 @@ public:
     //   fmt::print( "]\n" );
     // }
 
-    fmt::print( "[m] Ready to optimize!\n" );
+    // fmt::print( "[m] Ready to optimize!\n" );
 
     /* gates */
     progress_bar pbar{ _ntk.num_gates(), "[i] Decomposition-based local computation maximization |{0}| node = {1:>4} / " + std::to_string( _ntk.num_gates() ), true };
@@ -324,7 +324,7 @@ public:
           const uint32_t party_ind = ntk_os.is_local( leaf_node );
           if ( party_ind > ( ownerships.size() - 1 ) )
           {
-            fmt::print( "The ownership id of the current signal is {}! Something is wrong!\n", party_ind );
+            // fmt::print( "The ownership id of the current signal is {}! Something is wrong!\n", party_ind );
             abort();
           }
 
@@ -584,7 +584,7 @@ public:
 
   bool run()
   {
-    std::vector<xag_network::node> nodes_on_frontier;
+    std::vector<uint32_t> nodes_on_frontier{};
     fanout_view<mpc_network> ntk_fo{ _ntk };
     ntk_fo.foreach_gate( [&ntk_fo, &nodes_on_frontier]( auto const& n ) {
       if ( ntk_fo.is_local( n ) == 0u )
@@ -606,10 +606,10 @@ public:
         return true;
       }
 
-      nodes_on_frontier.push_back( n );
+      nodes_on_frontier.push_back( ntk_fo.node_to_index( n ) );
       return true;
     } );
-    std::unordered_set<xag_network::node> lookup( nodes_on_frontier.begin(), nodes_on_frontier.end() );
+    std::unordered_set<uint32_t> lookup( nodes_on_frontier.begin(), nodes_on_frontier.end() );
 
     // _ntk.profile_ntk();
     _st.modified = false;
@@ -642,7 +642,7 @@ public:
       bool min_mc_mux_best{};
       cut_manager.clear_cuts( n );
       cut_manager.compute_cuts( n );
-      bool is_on_boundary = ( lookup.find( n ) != lookup.end() );
+      bool is_on_boundary = ( lookup.find( _ntk.node_to_index( n ) ) != lookup.end() );
       
       for ( auto& cut : cuts.cuts( _ntk.node_to_index( n ) ) )
       {
@@ -673,6 +673,7 @@ public:
         std::vector<node> leaves( cut->size() );
         std::vector<uint32_t> per_leaf_ownership( leaves.size() );
         auto ctr = 0u;
+        bool contain_constant = false;
         for ( auto leaf : *cut )
         {
           const node leaf_node = _ntk.index_to_node( leaf );
@@ -681,11 +682,22 @@ public:
           // {
           //   all_pi = false;
           // }
-          assert ( party_ind <= ( ownerships.size() - 1 ) );
+          // assert ( party_ind <= ( ownerships.size() - 1 ) );
+          /* this assertion could fail -- if a leaf is a constant, its 'party_ind' would be 33 */
+          /* let's rule out cuts whose leaves contain constants for now */
+          if ( party_ind > ( ownerships.size() - 1 ) )
+          {
+            contain_constant = true;
+            continue;
+          }
           ownerships[party_ind].push_back( ctr );
           leaves[ctr] = leaf_node;
           per_leaf_ownership[ctr] = _ntk.get_ownership( leaf_node );
           ++ctr;
+        }
+        if ( contain_constant )
+        {
+          continue;
         }
         
         uint32_t cut_num_joint_nodes{ 0u };
@@ -846,10 +858,10 @@ public:
         // fmt::print( "[m] Size of `_ntk` is {}\n", _ntk.size() );
         mpc_network::signal n_new_impl = _mc_analyzer.min_mc_resyn_mpc( _ntk, children, decomp_res_best, encodings_best, sel_polar_best, min_mc_mux_best );
         /* TODO : check if the ownership of the newly inserted nodes are correctly assigned */
-        if ( _ntk.get_node( n_new_impl ) == n )
-        {
-          return;
-        }
+        // if ( _ntk.get_node( n_new_impl ) == n )
+        // {
+        //   return;
+        // }
 
         /* for debugging */
         // std::vector<node> leaves_alt( 8u, _ntk.get_node( _ntk.get_constant( false ) ) );
@@ -867,73 +879,73 @@ public:
         //   abort();
         // }
 
-        /* looking for a small-scale example to demonstrate in the paper */
-        if ( leaves.size() <= 4u )
-        {
-          fmt::print( "[m] Printing out an {}-var example:\n", leaves.size() );
-          fmt::print( "[m] Truth table: " );
-          kitty::print_hex( tt );
-          fmt::print( "\n[m] per leaf ownership: [ " );
-          // std::vector<uint32_t> per_pi_ownership( leaves.size() );
-          for ( auto i{ 0u }; i < leaves.size(); ++i )
-          {
-            fmt::print( "{} ", _ntk.get_ownership( leaves[i] ) );
-          }
-          fmt::print( "]\n" );
+        // /* looking for a small-scale example to demonstrate in the paper */
+        // if ( leaves.size() <= 4u )
+        // {
+        //   fmt::print( "[m] Printing out an {}-var example:\n", leaves.size() );
+        //   fmt::print( "[m] Truth table: " );
+        //   kitty::print_hex( tt );
+        //   fmt::print( "\n[m] per leaf ownership: [ " );
+        //   // std::vector<uint32_t> per_pi_ownership( leaves.size() );
+        //   for ( auto i{ 0u }; i < leaves.size(); ++i )
+        //   {
+        //     fmt::print( "{} ", _ntk.get_ownership( leaves[i] ) );
+        //   }
+        //   fmt::print( "]\n" );
 
-          /* old implementation */
-          fmt::print( "\n[m] Printing out old implementation:\n" );
-          cut_view<mpc_network> old_impl{ _ntk, leaves, _ntk.make_signal( n ) };
-          // old_impl.assign_ownership_per_pi( per_pi_ownership );
-          // old_impl.profile_ntk();
-          old_impl.foreach_pi( [&old_impl]( auto const& pi, auto i ) {
-            fmt::print( "PI{} ", ( i + 1 ) );
-          } );
-          fmt::print( "\n" );
-          old_impl.foreach_gate( [&old_impl]( auto const& n ) {
-            fmt::print( "n{}={}( ", old_impl.node_to_index( n ), ( old_impl.is_and( n ) ? "AND" : "XOR" ) );
-            old_impl.foreach_fanin( n, [&old_impl]( auto const& ni, auto ind ) {
-              fmt::print( "{}{}{}", ( old_impl.is_complemented( ni ) ? "~" : "" ),
-                                    ( old_impl.is_pi( old_impl.get_node( ni ) ) ? "PI" : "n" ),
-                                    ( old_impl.node_to_index( old_impl.get_node( ni ) ) ) );
-              if ( ind == 0u )
-              {
-                fmt::print( ", " );
-              }
-              else
-              {
-                fmt::print( " ) " );
-              }
-            } );
-          } );
-          fmt::print( "\n" );
+        //   /* old implementation */
+        //   fmt::print( "\n[m] Printing out old implementation:\n" );
+        //   cut_view<mpc_network> old_impl{ _ntk, leaves, _ntk.make_signal( n ) };
+        //   // old_impl.assign_ownership_per_pi( per_pi_ownership );
+        //   // old_impl.profile_ntk();
+        //   old_impl.foreach_pi( [&old_impl]( auto const& pi, auto i ) {
+        //     fmt::print( "PI{} ", ( i + 1 ) );
+        //   } );
+        //   fmt::print( "\n" );
+        //   old_impl.foreach_gate( [&old_impl]( auto const& n ) {
+        //     fmt::print( "n{}={}( ", old_impl.node_to_index( n ), ( old_impl.is_and( n ) ? "AND" : "XOR" ) );
+        //     old_impl.foreach_fanin( n, [&old_impl]( auto const& ni, auto ind ) {
+        //       fmt::print( "{}{}{}", ( old_impl.is_complemented( ni ) ? "~" : "" ),
+        //                             ( old_impl.is_pi( old_impl.get_node( ni ) ) ? "PI" : "n" ),
+        //                             ( old_impl.node_to_index( old_impl.get_node( ni ) ) ) );
+        //       if ( ind == 0u )
+        //       {
+        //         fmt::print( ", " );
+        //       }
+        //       else
+        //       {
+        //         fmt::print( " ) " );
+        //       }
+        //     } );
+        //   } );
+        //   fmt::print( "\n" );
 
-          /* new implementation */
-          fmt::print( "\n[m] Printing out new implementation:\n" );
-          cut_view<mpc_network> new_impl{ _ntk, leaves, n_new_impl };
-          // new_impl.assign_ownership_per_pi( per_pi_ownership );
-          new_impl.foreach_pi( [&new_impl]( auto const& pi, auto i ) {
-            fmt::print( "PI{} ", ( i + 1 ) );
-          } );
-          fmt::print( "\n" );
-          new_impl.foreach_gate( [&new_impl]( auto const& n ) {
-            fmt::print( "n{}={}( ", new_impl.node_to_index( n ), ( new_impl.is_and( n ) ? "AND" : "XOR" ) );
-            new_impl.foreach_fanin( n, [&new_impl]( auto const& ni, auto ind ) {
-              fmt::print( "{}{}{}", ( new_impl.is_complemented( ni ) ? "~" : "" ),
-                                    ( new_impl.is_pi( new_impl.get_node( ni ) ) ? "PI" : "n" ),
-                                    ( new_impl.node_to_index( new_impl.get_node( ni ) ) ) );
-              if ( ind == 0u )
-              {
-                fmt::print( ", " );
-              }
-              else
-              {
-                fmt::print( " ) " );
-              }
-            } );
-          } );
-          fmt::print( "\n" );
-        }
+        //   /* new implementation */
+        //   fmt::print( "\n[m] Printing out new implementation:\n" );
+        //   cut_view<mpc_network> new_impl{ _ntk, leaves, n_new_impl };
+        //   // new_impl.assign_ownership_per_pi( per_pi_ownership );
+        //   new_impl.foreach_pi( [&new_impl]( auto const& pi, auto i ) {
+        //     fmt::print( "PI{} ", ( i + 1 ) );
+        //   } );
+        //   fmt::print( "\n" );
+        //   new_impl.foreach_gate( [&new_impl]( auto const& n ) {
+        //     fmt::print( "n{}={}( ", new_impl.node_to_index( n ), ( new_impl.is_and( n ) ? "AND" : "XOR" ) );
+        //     new_impl.foreach_fanin( n, [&new_impl]( auto const& ni, auto ind ) {
+        //       fmt::print( "{}{}{}", ( new_impl.is_complemented( ni ) ? "~" : "" ),
+        //                             ( new_impl.is_pi( new_impl.get_node( ni ) ) ? "PI" : "n" ),
+        //                             ( new_impl.node_to_index( new_impl.get_node( ni ) ) ) );
+        //       if ( ind == 0u )
+        //       {
+        //         fmt::print( ", " );
+        //       }
+        //       else
+        //       {
+        //         fmt::print( " ) " );
+        //       }
+        //     } );
+        //   } );
+        //   fmt::print( "\n" );
+        // }
 
         detail::recursive_deref<mpc_network, decltype( leaves.begin() ), mc_mpc_cost>( _ntk, n, leaves.begin(), leaves.end() );
         detail::recursive_ref<mpc_network, decltype( leaves.begin() ), mc_mpc_cost>( _ntk, _ntk.get_node( n_new_impl ), leaves.begin(), leaves.end() );
@@ -943,6 +955,7 @@ public:
         clear_cuts_fanout_rec( cuts, cut_manager, _ntk.get_node( n_new_impl ) );
         _st.modified = true;
         ++_st.num_better_impl;
+        // fmt::print( "[m] Ever reached here!\n" );
         // _ntk.profile_ntk();
         // fmt::print( "[m] the new implementation replacing node {} is node {}\n", _ntk.node_to_index( n ), _ntk.node_to_index( _ntk.get_node( n_new_impl ) ) );
       }
@@ -952,8 +965,7 @@ public:
       // }
     } );
 
-    _st.cost_optimal = costs<mpc_network, mc_mpc_cost>( _ntk );
-    
+    // _st.cost_optimal = costs<mpc_network, mc_mpc_cost>( _ntk );
   }
 
   void run_reverse_topo()
@@ -1009,14 +1021,26 @@ public:
         std::vector<std::vector<uint32_t>> ownerships( _num_parties + 1u );
         std::vector<node> leaves( cut->size() );
         auto ctr = 0u;
+        bool contain_constant = false;
         for ( auto leaf : *cut )
         {
           const node leaf_node = _ntk.index_to_node( leaf );
           const uint32_t party_ind = _ntk.is_local( leaf_node );
-          assert ( party_ind <= ( ownerships.size() - 1 ) );
+          // assert ( party_ind <= ( ownerships.size() - 1 ) );
+          /* this assertion could fail -- if a leaf is a constant, its 'party_ind' would be 33 */
+          /* let's rule out cuts whose leaves contain constants for now */
+          if ( party_ind > ( ownerships.size() - 1 ) )
+          {
+            contain_constant = true;
+            continue;
+          }
           ownerships[party_ind].push_back( ctr );
           leaves[ctr] = leaf_node;
           ++ctr;
+        }
+        if ( contain_constant )
+        {
+          continue;
         }
         ownerships.erase( std::remove_if( ownerships.begin() + 1u, ownerships.end(), []( auto const& v ){ return v.empty(); } ), ownerships.end() );
         std::sort( ownerships.begin() + 1u, ownerships.end(), []( auto const& v1, auto const& v2 ) { return ( v1.size() > v2.size() ); } );

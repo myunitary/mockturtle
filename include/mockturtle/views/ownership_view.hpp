@@ -472,6 +472,12 @@ public:
     {
       return 0u;
     }
+    /* handing the ownership of constant nodes */
+    // if ( __builtin_popcount( ownership ) == 0u )
+    // {
+    //   return UINT32_MAX;
+    // }
+
     // else if ( __builtin_popcount( ownership ) != 1u )
     // {
     //   fmt::print( "[e] Something is wrong with ownership assignment!\n" );

@@ -1,0 +1,14 @@
+[
+  {
+    "entries": [
+      {
+        "# itr.": 44,
+        "AND count": 5291,
+        "benchmark": "div_opt",
+        "joint AND count": 5205,
+        "opt. joint AND count": 5138
+      }
+    ],
+    "version": "8138ccb"
+  }
+]

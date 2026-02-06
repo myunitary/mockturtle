@@ -1,0 +1,24 @@
+[
+  {
+    "entries": [
+      {
+        "AND count": 96,
+        "benchmark": "bitonic_sort_inc_2",
+        "joint AND count": 88,
+        "opt. joint AND count": 88
+      }
+    ],
+    "version": "82212d0"
+  },
+  {
+    "entries": [
+      {
+        "AND count": 8,
+        "benchmark": "bitonic_sort_inc_1_4",
+        "joint AND count": 8,
+        "opt. joint AND count": 8
+      }
+    ],
+    "version": "8138ccb"
+  }
+]

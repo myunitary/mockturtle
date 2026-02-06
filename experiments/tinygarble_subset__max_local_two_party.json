@@ -1,0 +1,25 @@
+[
+  {
+    "entries": [
+      {
+        "AND count": 6446,
+        "benchmark": "aes_1cc_firstframe",
+        "joint AND count": 5153,
+        "opt. joint AND count": 5153
+      },
+      {
+        "AND count": 48,
+        "benchmark": "hamming_32bit_1cc_firstframe",
+        "joint AND count": 48,
+        "opt. joint AND count": 48
+      },
+      {
+        "AND count": 11465,
+        "benchmark": "Lite_MIPS_firstframe",
+        "joint AND count": 9380,
+        "opt. joint AND count": 9335
+      }
+    ],
+    "version": "cfbfc10"
+  }
+]

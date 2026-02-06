@@ -1,0 +1,35 @@
+[
+  {
+    "entries": [
+      {
+        "AND count": 128,
+        "benchmark": "adder_opt",
+        "joint AND count": 128,
+        "opt. joint AND count": 128,
+        "runtime [s]": 1.7701375484466553
+      },
+      {
+        "AND count": 5291,
+        "benchmark": "div_opt",
+        "joint AND count": 5205,
+        "opt. joint AND count": 5197,
+        "runtime [s]": 22.341567993164063
+      },
+      {
+        "AND count": 890,
+        "benchmark": "max_opt",
+        "joint AND count": 890,
+        "opt. joint AND count": 890,
+        "runtime [s]": 2.448087453842163
+      },
+      {
+        "AND count": 7653,
+        "benchmark": "multiplier_opt",
+        "joint AND count": 7410,
+        "opt. joint AND count": 7403,
+        "runtime [s]": 15.721381187438965
+      }
+    ],
+    "version": "cfbfc10"
+  }
+]

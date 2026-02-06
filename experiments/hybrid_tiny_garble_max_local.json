@@ -1,0 +1,49 @@
+[
+  {
+    "entries": [
+      {
+        "AND count": 6446,
+        "benchmark": "aes_1cc_firstframe",
+        "joint AND count": 5153,
+        "opt. joint AND count": 5153,
+        "runtime [s]": 8.564957618713379
+      },
+      {
+        "AND count": 48,
+        "benchmark": "hamming_32bit_1cc_firstframe",
+        "joint AND count": 48,
+        "opt. joint AND count": 48,
+        "runtime [s]": 4.040741920471191
+      },
+      {
+        "AND count": 9133,
+        "benchmark": "Lite_MIPS_firstframe",
+        "joint AND count": 6965,
+        "opt. joint AND count": 6965,
+        "runtime [s]": 13.88570499420166
+      },
+      {
+        "AND count": 95,
+        "benchmark": "comparator_32bit_unsigned_lt",
+        "joint AND count": 93,
+        "opt. joint AND count": 90,
+        "runtime [s]": 12.331901550292969
+      },
+      {
+        "AND count": 53,
+        "benchmark": "encoder_32bit_1cc_firstframe",
+        "joint AND count": 6,
+        "opt. joint AND count": 6,
+        "runtime [s]": 4.4529709815979
+      },
+      {
+        "AND count": 1600,
+        "benchmark": "sha3_24cc_firstframe",
+        "joint AND count": 1600,
+        "opt. joint AND count": 1600,
+        "runtime [s]": 4.203279495239258
+      }
+    ],
+    "version": "cfbfc10"
+  }
+]
